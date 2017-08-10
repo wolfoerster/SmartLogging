@@ -44,7 +44,7 @@ namespace SmartLogging
         /// </summary>
         /// <param name="fileName">The rolling log file name. If no name is given, configuration is done via config file.</param>
         /// <param name="maximumFileSize">The maximum log file size</param>
-        public static void Init(string fileName = null, string maximumFileSize = "10MB")
+        public static void Init(string fileName = null, string maximumFileSize = "10MB", int maxSizeRollBackups = 1)
         {
             if (string.IsNullOrWhiteSpace(fileName))
             {
@@ -52,11 +52,11 @@ namespace SmartLogging
             }
             else
             {
-                InitRollingFileAppender(fileName, maximumFileSize);
+                InitRollingFileAppender(fileName, maximumFileSize, maxSizeRollBackups);
             }
         }
 
-        private static void InitRollingFileAppender(string fileName, string maximumFileSize)
+        private static void InitRollingFileAppender(string fileName, string maximumFileSize, int maxSizeRollBackups)
         {
             Trace.WriteLine($"Configure rolling file appender: fileName = '{fileName}', maximumFileSize = {maximumFileSize}");
             Hierarchy hierarchy = (Hierarchy)LogManager.GetRepository();
@@ -64,7 +64,7 @@ namespace SmartLogging
 
             var fileAppender = new RollingFileAppender();
             fileAppender.RollingStyle = RollingFileAppender.RollingMode.Size;
-            fileAppender.MaxSizeRollBackups = 2;
+            fileAppender.MaxSizeRollBackups = maxSizeRollBackups;
             fileAppender.MaximumFileSize = maximumFileSize;
             fileAppender.StaticLogFileName = true;
             fileAppender.AppendToFile = true;
