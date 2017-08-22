@@ -42,17 +42,18 @@ namespace SmartLogging
         /// <summary>
         /// Initialize logging to either a rolling log file or based on a config file.
         /// </summary>
-        /// <param name="fileName">The rolling log file name. If no name is given, configuration is done via config file.</param>
-        /// <param name="maximumFileSize">The maximum log file size</param>
-        public static void Init(string fileName = null, string maximumFileSize = "10MB", int maxSizeRollBackups = 1)
+        /// <param name="rollingFileName">The rolling log file name. If no name is given, configuration is done via config file.</param>
+        /// <param name="maxFileSize">The maximum log file size</param>
+        /// <param name="maxNumberOfBackups">The maximum number of backup files</param>
+        public static void Init(string rollingFileName = null, string maxFileSize = "10MB", int maxNumberOfBackups = 1)
         {
-            if (string.IsNullOrWhiteSpace(fileName))
+            if (string.IsNullOrWhiteSpace(rollingFileName))
             {
                 InitByConfigFile(Assembly.GetCallingAssembly().Location);
             }
             else
             {
-                InitRollingFileAppender(fileName, maximumFileSize, maxSizeRollBackups);
+                InitRollingFileAppender(rollingFileName, maxFileSize, maxNumberOfBackups);
             }
         }
 
