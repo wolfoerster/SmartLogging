@@ -24,6 +24,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Reflection;
 using System.IO;
+using System.Runtime.Serialization;
 
 namespace SmartLogging
 {
@@ -191,12 +192,25 @@ namespace SmartLogging
             Smart(messageFunc(), level, ex, methodName);
         }
 
-        public void Smart(object obj, LogLevel level = LogLevel.Debug, Exception ex = null, [CallerMemberName]string methodName = null)
+        public void Smart(object obj, string message = null, LogLevel level = LogLevel.Debug, Exception ex = null, [CallerMemberName]string methodName = null)
         {
-            if (!CheckLevel(level) || obj == null)
+            if (!CheckLevel(level))
                 return;
 
-            Smart(obj.ToString(), level, ex, methodName);
+            var msg = GetObjectId(obj);
+            if (!string.IsNullOrEmpty(message))
+                msg = msg + ", " + message;
+
+            Smart(msg, level, ex, methodName);
+        }
+
+        public void Smart(object obj, Func<string> messageFunc, LogLevel level = LogLevel.Debug, Exception ex = null, [CallerMemberName]string methodName = null)
+        {
+            if (!CheckLevel(level))
+                return;
+
+            string message = messageFunc == null ? null : messageFunc();
+            Smart(obj, message, level, ex, methodName);
         }
 
         public void Exception(Exception ex, [CallerMemberName]string methodName = null)
@@ -211,5 +225,19 @@ namespace SmartLogging
         {
             Smart("Start logging", LogLevel.Fatal, null, methodName);
         }
+
+        public static string GetObjectId(object obj)
+        {
+            if (obj == null)
+            {
+                return "obj is null";
+            }
+
+            bool firstTime;
+            var id = IdGenerator.GetId(obj, out firstTime);
+            string state = firstTime ? "n" : "o";
+            return FormattableString.Invariant($"#{id}{state}");
+        }
+        private static readonly ObjectIDGenerator IdGenerator = new ObjectIDGenerator();
     }
 }
