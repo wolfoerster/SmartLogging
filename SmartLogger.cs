@@ -192,6 +192,15 @@ namespace SmartLogging
             Smart(messageFunc(), level, ex, methodName);
         }
 
+        public void Smart(object obj, LogLevel level = LogLevel.Debug, Exception ex = null, [CallerMemberName]string methodName = null)
+        {
+            if (!CheckLevel(level))
+                return;
+
+            Smart(obj == null ? "obj is null" : obj.ToString(), level, ex, methodName);
+        }
+
+#if false
         public void Smart(object obj, string message = null, LogLevel level = LogLevel.Debug, Exception ex = null, [CallerMemberName]string methodName = null)
         {
             if (!CheckLevel(level))
@@ -212,6 +221,7 @@ namespace SmartLogging
             string message = messageFunc == null ? null : messageFunc();
             Smart(obj, message, level, ex, methodName);
         }
+#endif
 
         public void Exception(Exception ex, [CallerMemberName]string methodName = null)
         {
