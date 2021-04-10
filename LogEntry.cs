@@ -1,5 +1,5 @@
 ﻿//******************************************************************************************
-// Copyright © 2017 Wolfgang Foerster (wolfoerster@gmx.de)
+// Copyright © 2017 - 2021 Wolfgang Foerster (wolfoerster@gmx.de)
 //
 // This file is part of the SmartLogging project which can be found on github.com
 //
@@ -14,22 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 //******************************************************************************************
-using System.Diagnostics;
 
 namespace SmartLogging
 {
-    public class SmartTraceListener : TraceListener
+    public class LogEntry
     {
-        private static readonly SmartLogger Log = new SmartLogger();
-
-        public override void Write(string message)
-        {
-            Log.Smart(message);
-        }
-
-        public override void WriteLine(string message)
-        {
-            Log.Smart(message);
-        }
+        public string Time { get; set; }
+        public string ThreadIds { get; set; }
+        public string Level { get; set; }
+        public string Class { get; set; }
+        public string Method { get; set; }
+        public string Message { get; set; }
     }
 }

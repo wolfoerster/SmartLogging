@@ -1,5 +1,5 @@
 ﻿//******************************************************************************************
-// Copyright © 2017 Wolfgang Foerster (wolfoerster@gmx.de)
+// Copyright © 2017 - 2021 Wolfgang Foerster (wolfoerster@gmx.de)
 //
 // This file is part of the SmartLogging project which can be found on github.com
 //
@@ -14,240 +14,250 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 //******************************************************************************************
-using log4net;
-using log4net.Appender;
-using log4net.Layout;
-using log4net.Repository.Hierarchy;
-using System;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
-using System.Threading;
-using System.Reflection;
-using System.IO;
-using System.Runtime.Serialization;
 
 namespace SmartLogging
 {
-    public enum LogLevel
-    {
-        Debug,
-        Info,
-        Warn,
-        Error,
-        Fatal,
-        None
-    }
+    using System;
+    using System.Collections.Concurrent;
+    using System.Diagnostics;
+    using System.IO;
+    using System.Reflection;
+    using System.Runtime.CompilerServices;
+    using System.Text;
+    using System.Threading;
+    using System.Threading.Tasks;
+    using Newtonsoft.Json;
 
     public class SmartLogger
     {
-        /// <summary>
-        /// Initialize logging to either a rolling log file or based on a config file.
-        /// </summary>
-        /// <param name="rollingFileName">The rolling log file name. If no name is given, configuration is done via config file.</param>
-        /// <param name="maxFileSize">The maximum log file size</param>
-        /// <param name="maxNumberOfBackups">The maximum number of backup files</param>
-        public static void Init(string rollingFileName = null, string maxFileSize = "10MB", int maxNumberOfBackups = 1)
+        private static readonly long MaxLength = 8 * 1024 * 1024; // new log file at 8 MB
+        private static readonly ConcurrentQueue<LogEntry> LogEntries = new ConcurrentQueue<LogEntry>();
+        private static readonly object Locker = new Object();
+        private static Task writerTask;
+        private readonly string className;
+        private readonly int appDomainId;
+        private readonly int processId;
+
+        public SmartLogger(object context = null)
         {
-            if (string.IsNullOrWhiteSpace(rollingFileName))
+            if (context == null)
             {
-                InitByConfigFile(Assembly.GetCallingAssembly().Location);
+                var stackTrace = new StackTrace();
+                var method = stackTrace.GetFrame(1).GetMethod();
+                context = method.DeclaringType;
+            }
+
+            this.className = GetClassName(context);
+
+            using (var process = Process.GetCurrentProcess())
+            {
+                this.processId = process.Id;
+                this.appDomainId = AppDomain.CurrentDomain.Id;
+            }
+        }
+
+        public static LogLevel MinimumLogLevel = LogLevel.Information;
+
+        public static string FileName { get; private set; }
+
+        public static void Init(string fileName = null)
+        {
+            if (writerTask != null)
+                return;
+
+            if (fileName == null)
+            {
+                var name = Path.GetFileNameWithoutExtension(Assembly.GetEntryAssembly().Location);
+                FileName = Path.Combine(Path.GetTempPath(), $"{name}.log");
             }
             else
             {
-                InitRollingFileAppender(rollingFileName, maxFileSize, maxNumberOfBackups);
+                FileName = fileName;
+            }
+
+            writerTask = Task.Run(() => WriterLoop());
+
+            var log = new SmartLogger(typeof(SmartLogger));
+            log.None("Start logging");
+        }
+
+        public void Verbose(object msg = null, [CallerMemberName] string methodName = null)
+        {
+            this.Write(msg, LogLevel.Verbose, methodName);
+        }
+
+        public void Debug(object msg = null, [CallerMemberName] string methodName = null)
+        {
+            this.Write(msg, LogLevel.Debug, methodName);
+        }
+
+        public void Information(object msg = null, [CallerMemberName] string methodName = null)
+        {
+            this.Write(msg, LogLevel.Information, methodName);
+        }
+
+        public void Warning(object msg = null, [CallerMemberName] string methodName = null)
+        {
+            this.Write(msg, LogLevel.Warning, methodName);
+        }
+
+        public void Error(object msg = null, [CallerMemberName] string methodName = null)
+        {
+            this.Write(msg, LogLevel.Error, methodName);
+        }
+
+        public void Fatal(object msg = null, [CallerMemberName] string methodName = null)
+        {
+            this.Write(msg, LogLevel.Fatal, methodName);
+        }
+
+        public void None(object msg = null, [CallerMemberName] string methodName = null)
+        {
+            this.Write(msg, LogLevel.None, methodName);
+        }
+
+        public void Exception(Exception exception, [CallerMemberName] string methodName = null)
+        {
+            this.Fatal(new { ExceptionMessage = GetMessage(exception), exception.StackTrace }, methodName);
+        }
+
+        public void Write(object msg, LogLevel level, [CallerMemberName] string methodName = null)
+        {
+            if (level < MinimumLogLevel)
+                return;
+
+            try
+            {
+                if (writerTask == null)
+                    Init();
+
+                var entry = CreateLogEntry(msg, level, methodName);
+                LogEntries.Enqueue(entry);
+            }
+            catch
+            {
             }
         }
 
-        private static void InitRollingFileAppender(string fileName, string maximumFileSize, int maxSizeRollBackups)
+        private LogEntry CreateLogEntry(object msg, LogLevel level, string methodName)
         {
-            Trace.WriteLine($"Configure rolling file appender: fileName = '{fileName}', maximumFileSize = {maximumFileSize}");
-            Hierarchy hierarchy = (Hierarchy)LogManager.GetRepository();
-            hierarchy.Root.RemoveAllAppenders(); /*Remove any other appenders*/
+            string threadIds = string.Format("{0}/{1}/{2}", this.processId, this.appDomainId, Thread.CurrentThread.ManagedThreadId);
 
-            var fileAppender = new RollingFileAppender();
-            fileAppender.RollingStyle = RollingFileAppender.RollingMode.Size;
-            fileAppender.MaxSizeRollBackups = maxSizeRollBackups;
-            fileAppender.MaximumFileSize = maximumFileSize;
-            fileAppender.StaticLogFileName = true;
-            fileAppender.AppendToFile = true;
-            fileAppender.LockingModel = new FileAppender.MinimalLock();
-            fileAppender.File = fileName;
-            //PatternLayout pl = new PatternLayout { ConversionPattern = "%utcdate{yyyy-MM-dd HH:mm:ss.ffffff} %level %logger %message%newline%exception" };
-            //--- there is no use in specifying more than 3 digits for the seconds, because the resolution will only be one millisecond!!!
-            PatternLayout pl = new PatternLayout { ConversionPattern = "%utcdate{yyyy-MM-dd HH:mm:ss.fff} %level %logger %message%newline%exception" };
-            pl.ActivateOptions();
-            fileAppender.Layout = pl;
-            fileAppender.ActivateOptions();
-
-            log4net.Config.BasicConfigurator.Configure(fileAppender);
+            return new LogEntry
+            {
+                Time = DateTime.UtcNow.ToString("o"),
+                ThreadIds = threadIds,
+                Level = level.ToString(),
+                Class = this.className,
+                Method = methodName,
+                Message = ToJson(msg),
+            };
         }
 
-        private static void InitByConfigFile(string exe)
+        private static string ToJson(object value)
         {
-            string configFile = exe + ".config";
-            if (File.Exists(configFile))
-            {
-                Trace.WriteLine($"Reading configuration from file: '{configFile}'");
-                var fileInfo = new FileInfo(configFile);
-                log4net.Config.XmlConfigurator.ConfigureAndWatch(fileInfo);
-            }
-            else
-            {
-                Trace.WriteLine($"Configuration file does not exist: '{configFile}'");
-            }
+            return JsonConvert.SerializeObject(value, Formatting.None);
         }
 
-        public static bool TraceLogging
+        private static string GetMessage(Exception exception)
         {
-            get { return mySmartTraceListener != null; }
-            set
+            var sb = new StringBuilder();
+            sb.Append(exception.Message);
+
+            exception = exception.InnerException;
+            while (exception != null)
             {
-                if (value == true && mySmartTraceListener == null)
+                sb.Append(" InnerException: ");
+                sb.Append(exception.Message);
+                exception = exception.InnerException;
+            }
+
+            return sb.ToString();
+        }
+
+        private static string GetClassName(object context)
+        {
+            if (context is Type type)
+                return type.FullName;
+
+            if (context is string className)
+            {
+                if (string.IsNullOrWhiteSpace(className))
+                    return "-?-";
+
+                return className;
+            }
+
+            return context.GetType().FullName;
+        }
+
+        #region WriterLoop
+
+        private static void WriterLoop()
+        {
+            DateTime t0 = DateTime.UtcNow;
+            while (true)
+            {
+                while (LogEntries.TryDequeue(out LogEntry entry))
                 {
-                    mySmartTraceListener = new SmartTraceListener();
-                    Trace.Listeners.Add(mySmartTraceListener);
+                    try
+                    {
+                        lock (Locker)
+                        {
+                            using (StreamWriter sw = File.AppendText(FileName))
+                            {
+                                var json = ToJson(entry);
+                                sw.WriteLine(json);
+                            }
+                        }
+                    }
+                    catch (Exception exception)
+                    {
+                        var str = GetMessage(exception);
+                        Trace.WriteLine(str);
+                    }
                 }
 
-                if (value == false && mySmartTraceListener != null)
+                Thread.Sleep(30);
+
+                if ((DateTime.UtcNow - t0).TotalSeconds > 10)
                 {
-                    Trace.Listeners.Remove(mySmartTraceListener);
+                    try
+                    {
+                        CheckFileSize();
+                    }
+                    catch (Exception exception)
+                    {
+                        var str = GetMessage(exception);
+                        Trace.WriteLine(str);
+                    }
+
+                    t0 = DateTime.UtcNow;
                 }
             }
         }
-        private static SmartTraceListener mySmartTraceListener;
 
-        public static bool InternalLogging
+        private static void CheckFileSize()
         {
-            get { return log4net.Util.LogLog.InternalDebugging; }
-            set
+            if (File.Exists(FileName))
             {
-                if (log4net.Util.LogLog.InternalDebugging != value)
+                var fileInfo = new FileInfo(FileName);
+                if (fileInfo.Length > MaxLength)
                 {
-                    log4net.Util.LogLog.InternalDebugging = value;
+                    var backupName = FileName + ".log";
+
+                    lock (Locker)
+                    {
+                        File.Delete(backupName);
+                        File.Move(FileName, backupName);
+                    }
+
+                    var log = new SmartLogger(typeof(SmartLogger));
+                    log.None(new { logFileSize = fileInfo.Length, allowedSize = MaxLength, backupName });
                 }
             }
         }
 
-        public SmartLogger(string name = null)
-        {
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                StackTrace stackTrace = new StackTrace();
-                name = stackTrace.GetFrame(1).GetMethod().DeclaringType.FullName;
-            }
-
-            log = LogManager.GetLogger(name);
-
-            using (Process process = Process.GetCurrentProcess())
-            {
-                ProcessId = process.Id;
-            }
-            AppDomainId = AppDomain.CurrentDomain.Id;
-        }
-
-        private ILog log;
-        public int AppDomainId;
-        public int ProcessId;
-
-        private bool CheckLevel(LogLevel level)
-        {
-            if (log == null)
-                return false;
-
-            switch (level)
-            {
-                case LogLevel.Debug: return log.IsDebugEnabled;
-                case LogLevel.Info: return log.IsInfoEnabled;
-                case LogLevel.Warn: return log.IsWarnEnabled;
-                case LogLevel.Error: return log.IsErrorEnabled;
-                case LogLevel.Fatal: return log.IsFatalEnabled;
-            }
-
-            return true;
-        }
-
-        public void Smart(string message = null, LogLevel level = LogLevel.Debug, Exception ex = null, [CallerMemberName]string methodName = null)
-        {
-            if (!CheckLevel(level))
-                return;
-
-            int threadId = Thread.CurrentThread.ManagedThreadId;
-            string str = string.Format("{0}/{1}/{2} {3} {4}", ProcessId, AppDomainId, threadId, methodName, message);
-
-            switch (level)
-            {
-                case LogLevel.Debug: log.Debug(str, ex); break;
-                case LogLevel.Info: log.Info(str, ex); break;
-                case LogLevel.Warn: log.Warn(str, ex); break;
-                case LogLevel.Error: log.Error(str, ex); break;
-                case LogLevel.Fatal: log.Fatal(str, ex); break;
-            }
-        }
-
-        public void Smart(Func<string> messageFunc, LogLevel level = LogLevel.Debug, Exception ex = null, [CallerMemberName]string methodName = null)
-        {
-            if (!CheckLevel(level) || messageFunc == null)
-                return;
-
-            Smart(messageFunc(), level, ex, methodName);
-        }
-
-        public void Smart(object obj, LogLevel level = LogLevel.Debug, Exception ex = null, [CallerMemberName]string methodName = null)
-        {
-            if (!CheckLevel(level))
-                return;
-
-            Smart(obj == null ? "obj is null" : obj.ToString(), level, ex, methodName);
-        }
-
-#if false
-        public void Smart(object obj, string message = null, LogLevel level = LogLevel.Debug, Exception ex = null, [CallerMemberName]string methodName = null)
-        {
-            if (!CheckLevel(level))
-                return;
-
-            var msg = GetObjectId(obj);
-            if (!string.IsNullOrEmpty(message))
-                msg = msg + ", " + message;
-
-            Smart(msg, level, ex, methodName);
-        }
-
-        public void Smart(object obj, Func<string> messageFunc, LogLevel level = LogLevel.Debug, Exception ex = null, [CallerMemberName]string methodName = null)
-        {
-            if (!CheckLevel(level))
-                return;
-
-            string message = messageFunc == null ? null : messageFunc();
-            Smart(obj, message, level, ex, methodName);
-        }
-#endif
-
-        public void Exception(Exception ex, [CallerMemberName]string methodName = null)
-        {
-            if (!CheckLevel(LogLevel.Error) || ex == null)
-                return;
-
-            Smart("EXCEPTION", LogLevel.Error, ex, methodName);
-        }
-
-        public void Start([CallerMemberName]string methodName = null)
-        {
-            Smart("Start logging", LogLevel.Fatal, null, methodName);
-        }
-
-        public static string GetObjectId(object obj)
-        {
-            if (obj == null)
-            {
-                return "obj is null";
-            }
-
-            bool firstTime;
-            var id = IdGenerator.GetId(obj, out firstTime);
-            string state = firstTime ? "n" : "o";
-            return FormattableString.Invariant($"#{id}{state}");
-        }
-        private static readonly ObjectIDGenerator IdGenerator = new ObjectIDGenerator();
+        #endregion WriterLoop
     }
 }
