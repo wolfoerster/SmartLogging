@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using SmartLogging;
 
 namespace TestApp
@@ -20,6 +21,8 @@ namespace TestApp
                     break;
                 }
             }
+
+            SmartLogger.Flush();
         }
     }
 }

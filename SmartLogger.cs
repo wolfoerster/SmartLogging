@@ -81,6 +81,12 @@ namespace SmartLogging
             log.None("Start logging");
         }
 
+        public static void Flush()
+        {
+            // TODO: each logger has a WriterLoop which is processing log entries and which may not be done yet
+            Thread.Sleep(30);
+        }
+
         public void Verbose(object msg = null, [CallerMemberName] string methodName = null)
         {
             this.Write(msg, LogLevel.Verbose, methodName);
@@ -150,8 +156,16 @@ namespace SmartLogging
                 Level = level.ToString(),
                 Class = this.className,
                 Method = methodName,
-                Message = ToJson(msg),
+                Message = GetString(msg),
             };
+        }
+
+        private static string GetString(object value)
+        {
+            if (value is string str)
+                return str;
+
+            return ToJson(value);
         }
 
         private static string ToJson(object value)
