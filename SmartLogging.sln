@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+# Visual Studio Version 17
+VisualStudioVersion = 17.10.35027.167
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartLogging", "SmartLogging.csproj", "{FE52DFAC-2EDF-4459-8EE3-00D3F99220C8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SmartLogging", "SmartLogging.csproj", "{FE52DFAC-2EDF-4459-8EE3-00D3F99220C8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestApp", "TestApp\TestApp\TestApp.csproj", "{671C173D-D57A-4491-9F04-CCCD104C704B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,8 +17,15 @@ Global
 		{FE52DFAC-2EDF-4459-8EE3-00D3F99220C8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FE52DFAC-2EDF-4459-8EE3-00D3F99220C8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FE52DFAC-2EDF-4459-8EE3-00D3F99220C8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{671C173D-D57A-4491-9F04-CCCD104C704B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{671C173D-D57A-4491-9F04-CCCD104C704B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{671C173D-D57A-4491-9F04-CCCD104C704B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{671C173D-D57A-4491-9F04-CCCD104C704B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C35F38A6-49EC-433E-8DB6-26D25B18848C}
 	EndGlobalSection
 EndGlobal
