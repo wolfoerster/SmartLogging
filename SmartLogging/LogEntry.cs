@@ -20,7 +20,7 @@ namespace SmartLogging
     public class LogEntry
     {
         public string Time { get; set; }
-        public string ThreadIds { get; set; }
+        public int ThreadId { get; set; }
         public string Level { get; set; }
         public string Class { get; set; }
         public string Method { get; set; }

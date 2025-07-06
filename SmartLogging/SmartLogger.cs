@@ -31,12 +31,10 @@ namespace SmartLogging
     public class SmartLogger
     {
         private static readonly long MaxLength = 8 * 1024 * 1024; // new log file at 8 MB
-        private static readonly ConcurrentQueue<LogEntry> LogEntries = new ConcurrentQueue<LogEntry>();
-        private static readonly object Locker = new Object();
+        private static readonly ConcurrentQueue<LogEntry> LogEntries = new();
+        private static readonly object Locker = new();
         private static Task writerTask;
         private readonly string className;
-        private readonly int appDomainId;
-        private readonly int processId;
 
         public SmartLogger(object context = null)
         {
@@ -48,12 +46,6 @@ namespace SmartLogging
             }
 
             this.className = GetClassName(context);
-
-            using (var process = Process.GetCurrentProcess())
-            {
-                this.processId = process.Id;
-                this.appDomainId = AppDomain.CurrentDomain.Id;
-            }
         }
 
         public static LogLevel MinimumLogLevel = LogLevel.Information;
@@ -137,27 +129,21 @@ namespace SmartLogging
                 if (writerTask == null)
                     Init();
 
-                var entry = CreateLogEntry(msg, level, methodName);
+                var entry = new LogEntry
+                {
+                    Time = DateTime.UtcNow.ToString("o"),
+                    ThreadId = Thread.CurrentThread.ManagedThreadId,
+                    Level = level.ToString(),
+                    Class = this.className,
+                    Method = methodName,
+                    Message = (msg is string s) ? s : ToJson(msg),
+                };
+
                 LogEntries.Enqueue(entry);
             }
             catch
             {
             }
-        }
-
-        private LogEntry CreateLogEntry(object msg, LogLevel level, string methodName)
-        {
-            string threadIds = string.Format("{0}/{1}/{2}", this.processId, this.appDomainId, Thread.CurrentThread.ManagedThreadId);
-
-            return new LogEntry
-            {
-                Time = DateTime.UtcNow.ToString("o"),
-                ThreadIds = threadIds,
-                Level = level.ToString(),
-                Class = this.className,
-                Method = methodName,
-                Message = (msg is string s) ? s : ToJson(msg),
-            };
         }
 
         private static string ToJson(object value)

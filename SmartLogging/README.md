@@ -1,2 +1,2 @@
 # SmartLogging
-A .NET logging utility based on JSON.
+Smart file based logging in JSON format.

@@ -5,11 +5,24 @@
     <LangVersion>latest</LangVersion>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+
+    <PackageId>SmartLogging</PackageId>
+    <PackageVersion>1.0.0</PackageVersion>
+    <Title>SmartLogging</Title>
+    <Authors>Wolfgang Foerster</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/wolfoerster/SmartLogging</PackageProjectUrl>
+    <Description>Smart file based logging in JSON format</Description>
+    <PackageReleaseNotes>Consolidated successor of version 0.9</PackageReleaseNotes>
+    <Copyright>Copyright © 2006 - 2025 Wolfgang Foerster (wolfoerster@gmx.de)</Copyright>
+    <PackageTags>.NET;Logging;JSON</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
     <None Remove=".gitattributes" />
     <None Remove=".gitignore" />
+    <None Include="README.md" Pack="true" PackagePath=""/>
   </ItemGroup>
 
   <ItemGroup>
