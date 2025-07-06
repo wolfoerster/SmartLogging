@@ -1,5 +1,5 @@
 ﻿//******************************************************************************************
-// Copyright © 2017 - 2021 Wolfgang Foerster (wolfoerster@gmx.de)
+// Copyright © 2017 - 2025 Wolfgang Foerster (wolfoerster@gmx.de)
 //
 // This file is part of the SmartLogging project which can be found on github.com
 //
@@ -18,22 +18,12 @@
 namespace SmartLogging
 {
     using System;
-    using System.Collections.Concurrent;
     using System.Diagnostics;
-    using System.IO;
-    using System.Reflection;
     using System.Runtime.CompilerServices;
-    using System.Text;
-    using System.Text.Json;
     using System.Threading;
-    using System.Threading.Tasks;
 
     public class SmartLogger
     {
-        private static readonly long MaxLength = 8 * 1024 * 1024; // new log file at 8 MB
-        private static readonly ConcurrentQueue<LogEntry> LogEntries = new();
-        private static readonly object Locker = new();
-        private static Task writerTask;
         private readonly string className;
 
         public SmartLogger(object context = null)
@@ -49,35 +39,6 @@ namespace SmartLogging
         }
 
         public static LogLevel MinimumLogLevel = LogLevel.Information;
-
-        public static string FileName { get; private set; }
-
-        public static void Init(string fileName = null)
-        {
-            if (writerTask != null)
-                return;
-
-            if (fileName == null)
-            {
-                var name = Path.GetFileNameWithoutExtension(Assembly.GetEntryAssembly().Location);
-                FileName = Path.Combine(Path.GetTempPath(), $"{name}.log");
-            }
-            else
-            {
-                FileName = fileName;
-            }
-
-            writerTask = Task.Run(() => WriterLoop());
-
-            var log = new SmartLogger(typeof(SmartLogger));
-            log.None("Start logging");
-        }
-
-        public static void Flush()
-        {
-            // TODO: each logger has a WriterLoop which is processing log entries and which may not be done yet
-            Thread.Sleep(30);
-        }
 
         public void Verbose(object msg = null, [CallerMemberName] string methodName = null)
         {
@@ -116,7 +77,7 @@ namespace SmartLogging
 
         public void Exception(Exception exception, [CallerMemberName] string methodName = null)
         {
-            this.Fatal(new { ExceptionMessage = GetMessage(exception), exception.StackTrace }, methodName);
+            this.Fatal(new { ExceptionMessage = exception.GetMessage(), exception.StackTrace }, methodName);
         }
 
         public void Write(object msg, LogLevel level, [CallerMemberName] string methodName = null)
@@ -126,62 +87,21 @@ namespace SmartLogging
 
             try
             {
-                if (writerTask == null)
-                    Init();
-
                 var entry = new LogEntry
                 {
                     Time = DateTime.UtcNow.ToString("o"),
                     ThreadId = Thread.CurrentThread.ManagedThreadId,
                     Level = level.ToString(),
-                    Class = this.className,
+                    Class = className,
                     Method = methodName,
-                    Message = (msg is string s) ? s : ToJson(msg),
+                    Message = (msg is string s) ? s : msg.ToJson(),
                 };
 
-                LogEntries.Enqueue(entry);
+                LogWriter.Add(entry);
             }
             catch
             {
             }
-        }
-
-        private static string ToJson(object value)
-        {
-            if (value == null)
-                return "null";
-
-            try
-            {
-                return JsonSerializer.Serialize(value);
-            }
-            catch
-            {
-                try
-                {
-                    return value.ToString();
-                }
-                catch
-                {
-                    return "?¿?";
-                }
-            }
-        }
-
-        private static string GetMessage(Exception exception)
-        {
-            var sb = new StringBuilder();
-            sb.Append(exception.Message);
-
-            exception = exception.InnerException;
-            while (exception != null)
-            {
-                sb.Append(" InnerException: ");
-                sb.Append(exception.Message);
-                exception = exception.InnerException;
-            }
-
-            return sb.ToString();
         }
 
         private static string GetClassName(object context)
@@ -199,74 +119,5 @@ namespace SmartLogging
 
             return context.GetType().FullName;
         }
-
-        #region WriterLoop
-
-        private static void WriterLoop()
-        {
-            DateTime t0 = DateTime.UtcNow;
-            while (true)
-            {
-                while (LogEntries.TryDequeue(out LogEntry entry))
-                {
-                    try
-                    {
-                        lock (Locker)
-                        {
-                            using (StreamWriter sw = File.AppendText(FileName))
-                            {
-                                var json = ToJson(entry);
-                                sw.WriteLine(json);
-                            }
-                        }
-                    }
-                    catch (Exception exception)
-                    {
-                        var str = GetMessage(exception);
-                        Trace.WriteLine(str);
-                    }
-                }
-
-                Thread.Sleep(30);
-
-                if ((DateTime.UtcNow - t0).TotalSeconds > 10)
-                {
-                    try
-                    {
-                        CheckFileSize();
-                    }
-                    catch (Exception exception)
-                    {
-                        var str = GetMessage(exception);
-                        Trace.WriteLine(str);
-                    }
-
-                    t0 = DateTime.UtcNow;
-                }
-            }
-        }
-
-        private static void CheckFileSize()
-        {
-            if (File.Exists(FileName))
-            {
-                var fileInfo = new FileInfo(FileName);
-                if (fileInfo.Length > MaxLength)
-                {
-                    var backupName = FileName + ".log";
-
-                    lock (Locker)
-                    {
-                        File.Delete(backupName);
-                        File.Move(FileName, backupName);
-                    }
-
-                    var log = new SmartLogger(typeof(SmartLogger));
-                    log.None(new { logFileSize = fileInfo.Length, allowedSize = MaxLength, backupName });
-                }
-            }
-        }
-
-        #endregion WriterLoop
     }
 }

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Threading;
 using SmartLogging;
 
 namespace TestApp
@@ -10,7 +9,9 @@ namespace TestApp
         {
             Console.WriteLine("Press [Esc] to quit ...");
 
+            LogWriter.Init();
             var logger = new SmartLogger();
+
             while (true)
             {
                 var keyInfo = Console.ReadKey();
@@ -22,7 +23,7 @@ namespace TestApp
                 }
             }
 
-            SmartLogger.Flush();
+            LogWriter.Exit();
         }
     }
 }

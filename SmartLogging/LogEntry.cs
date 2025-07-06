@@ -1,5 +1,5 @@
 ﻿//******************************************************************************************
-// Copyright © 2017 - 2021 Wolfgang Foerster (wolfoerster@gmx.de)
+// Copyright © 2017 - 2025 Wolfgang Foerster (wolfoerster@gmx.de)
 //
 // This file is part of the SmartLogging project which can be found on github.com
 //
@@ -17,7 +17,7 @@
 
 namespace SmartLogging
 {
-    public class LogEntry
+    internal class LogEntry
     {
         public string Time { get; set; }
         public int ThreadId { get; set; }
