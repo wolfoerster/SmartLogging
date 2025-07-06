@@ -160,7 +160,27 @@ namespace SmartLogging
             };
         }
 
-        private static string ToJson(object value) => JsonSerializer.Serialize(value);
+        private static string ToJson(object value)
+        {
+            if (value == null)
+                return "null";
+
+            try
+            {
+                return JsonSerializer.Serialize(value);
+            }
+            catch
+            {
+                try
+                {
+                    return value.ToString();
+                }
+                catch
+                {
+                    return "?¿?";
+                }
+            }
+        }
 
         private static string GetMessage(Exception exception)
         {
