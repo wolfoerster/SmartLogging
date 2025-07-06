@@ -24,9 +24,9 @@ namespace SmartLogging
     using System.Reflection;
     using System.Runtime.CompilerServices;
     using System.Text;
+    using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
-    using Newtonsoft.Json;
 
     public class SmartLogger
     {
@@ -156,22 +156,11 @@ namespace SmartLogging
                 Level = level.ToString(),
                 Class = this.className,
                 Method = methodName,
-                Message = GetString(msg),
+                Message = (msg is string s) ? s : ToJson(msg),
             };
         }
 
-        private static string GetString(object value)
-        {
-            if (value is string str)
-                return str;
-
-            return ToJson(value);
-        }
-
-        private static string ToJson(object value)
-        {
-            return JsonConvert.SerializeObject(value, Formatting.None);
-        }
+        private static string ToJson(object value) => JsonSerializer.Serialize(value);
 
         private static string GetMessage(Exception exception)
         {
