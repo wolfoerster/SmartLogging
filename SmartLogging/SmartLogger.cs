@@ -94,7 +94,7 @@ namespace SmartLogging
                     Level = level.ToString(),
                     Class = className,
                     Method = methodName,
-                    Message = (msg is string s) ? s : msg.ToJson(),
+                    Message = msg.GetString(),
                 };
 
                 LogWriter.Add(entry);

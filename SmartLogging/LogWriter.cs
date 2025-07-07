@@ -31,7 +31,6 @@ public static class LogWriter
 {
     private static readonly ConcurrentQueue<LogEntry> LogEntries = new();
     private static readonly CancellationTokenSource TokenSource = new();
-    private static readonly CancellationToken Token = TokenSource.Token;
     private static readonly object Locker = new();
     private static long MaxLength;
     private static Task WriterTask;
@@ -77,13 +76,9 @@ public static class LogWriter
     /// Optionally terminates the log writer and returns when all pending log entries are saved to file
     /// or when the maximum response time in milliseconds is exceeded.
     /// </summary>
-    public static bool Exit(long maxResponseTime = 1000)
+    public static bool Exit(long maxResponseTime = 100)
     {
-#if !false
-        Thread.Sleep(30);
-        return false;
-#else
-        if (maxResponseTime < 30)
+        if (maxResponseTime < 100)
             return false;
 
         TokenSource.Cancel();
@@ -99,7 +94,6 @@ public static class LogWriter
             if ((DateTime.UtcNow - t0).TotalMilliseconds > maxResponseTime)
                 return false;
         }
-#endif
     }
 
     internal static void Add(LogEntry entry)
@@ -110,7 +104,7 @@ public static class LogWriter
         LogEntries.Enqueue(entry);
     }
 
-    internal static string ToJson(this object value)
+    internal static string GetString(this object value)
     {
         if (value == null)
             return "null";
@@ -165,7 +159,7 @@ public static class LogWriter
                     {
                         using (StreamWriter sw = File.AppendText(FileName))
                         {
-                            var json = ToJson(entry);
+                            var json = GetString(entry);
                             sw.WriteLine(json);
                         }
                     }
@@ -194,8 +188,11 @@ public static class LogWriter
                 t0 = DateTime.UtcNow;
             }
 
-            if (Token.IsCancellationRequested)
-                break;
+            if (TokenSource.Token.IsCancellationRequested)
+            {
+                if (LogEntries.Count == 0)
+                    break;
+            }
         }
     }
 
