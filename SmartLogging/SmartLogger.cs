@@ -38,8 +38,6 @@ namespace SmartLogging
             this.className = GetClassName(context);
         }
 
-        public static LogLevel MinimumLogLevel = LogLevel.Information;
-
         public void Verbose(object msg = null, [CallerMemberName] string methodName = null)
         {
             this.Write(msg, LogLevel.Verbose, methodName);
@@ -82,26 +80,7 @@ namespace SmartLogging
 
         public void Write(object msg, LogLevel level, [CallerMemberName] string methodName = null)
         {
-            if (level < MinimumLogLevel)
-                return;
-
-            try
-            {
-                var entry = new LogEntry
-                {
-                    Time = DateTime.UtcNow.ToString("o"),
-                    ThreadId = Thread.CurrentThread.ManagedThreadId,
-                    Level = level.ToString(),
-                    Class = className,
-                    Method = methodName,
-                    Message = msg.GetString(),
-                };
-
-                LogWriter.Add(entry);
-            }
-            catch
-            {
-            }
+            LogWriter.Write(msg, level, className, methodName);
         }
 
         private static string GetClassName(object context)

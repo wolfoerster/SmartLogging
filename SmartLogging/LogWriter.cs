@@ -41,6 +41,12 @@ public static class LogWriter
     public static string FileName { get; private set; }
 
     /// <summary>
+    /// The minimum log level which will be processed.
+    /// Log entries with a log level smaller than this value will not be processed.
+    /// </summary>
+    public static LogLevel MinimumLogLevel = LogLevel.Information;
+
+    /// <summary>
     /// Optionally initializes the log writer. You only need to call this method,
     /// if you want to change the default log file name or the default maximum log file size.
     /// </summary>
@@ -79,7 +85,7 @@ public static class LogWriter
     public static bool Exit(long maxResponseTime = 100)
     {
         if (maxResponseTime < 100)
-            return false;
+            maxResponseTime = 100;
 
         TokenSource.Cancel();
         var t0 = DateTime.UtcNow;
@@ -96,36 +102,30 @@ public static class LogWriter
         }
     }
 
-    internal static void Add(LogEntry entry)
+    internal static void Write(object msg, LogLevel level, string className, string methodName)
     {
-        if (WriterTask == null)
-            Init();
-
-        LogEntries.Enqueue(entry);
-    }
-
-    internal static string GetString(this object value)
-    {
-        if (value == null)
-            return "null";
-
-        if (value is string message)
-            return message;
+        if (level < MinimumLogLevel)
+            return;
 
         try
         {
-            return JsonSerializer.Serialize(value);
+            if (WriterTask == null)
+                Init();
+
+            var entry = new LogEntry
+            {
+                Time = DateTime.UtcNow.ToString("o"),
+                ThreadId = Thread.CurrentThread.ManagedThreadId,
+                Level = level.ToString(),
+                Class = className,
+                Method = methodName,
+                Message = msg.ToJson(),
+            };
+
+            LogEntries.Enqueue(entry);
         }
         catch
         {
-            try
-            {
-                return value.ToString();
-            }
-            catch
-            {
-                return $"SmartLogger Error: cannot convert object of type {value.GetType().FullName} to JSON";
-            }
         }
     }
 
@@ -153,52 +153,30 @@ public static class LogWriter
         {
             while (LogEntries.TryDequeue(out LogEntry entry))
             {
-                try
-                {
-                    lock (Locker)
-                    {
-                        using (StreamWriter sw = File.AppendText(FileName))
-                        {
-                            var json = GetString(entry);
-                            sw.WriteLine(json);
-                        }
-                    }
-                }
-                catch (Exception exception)
-                {
-                    var str = GetMessage(exception);
-                    Trace.WriteLine(str);
-                }
+                AppendToFile(entry);
             }
 
             Thread.Sleep(30);
 
             if ((DateTime.UtcNow - t0).TotalSeconds > 10)
             {
-                try
-                {
-                    CheckFileSize();
-                }
-                catch (Exception exception)
-                {
-                    var str = exception.GetMessage();
-                    Trace.WriteLine(str);
-                }
-
+                CheckFileSize();
                 t0 = DateTime.UtcNow;
             }
 
-            if (TokenSource.Token.IsCancellationRequested)
+            if (TokenSource.Token.IsCancellationRequested && LogEntries.Count == 0)
             {
-                if (LogEntries.Count == 0)
-                    break;
+                break;
             }
         }
     }
 
     private static void CheckFileSize()
     {
-        if (File.Exists(FileName))
+        if (!File.Exists(FileName))
+            return;
+
+        try
         {
             var fileInfo = new FileInfo(FileName);
             if (fileInfo.Length > MaxLength)
@@ -213,6 +191,61 @@ public static class LogWriter
 
                 var log = new SmartLogger(typeof(SmartLogger));
                 log.None(new { message = "log file exceeded maximum size", logFileSize = fileInfo.Length, allowedSize = MaxLength, backupName });
+            }
+        }
+        catch (Exception exception)
+        {
+            try
+            {
+                var str = exception.GetMessage();
+                var name = FileName + ".ex.log";
+                File.WriteAllText(name, exception.ToString());
+            }
+            catch 
+            {
+            }
+        }
+    }
+
+    private static void AppendToFile(LogEntry entry)
+    {
+        try
+        {
+            lock (Locker)
+            {
+                using StreamWriter sw = File.AppendText(FileName);
+                var json = ToJson(entry);
+                sw.WriteLine(json);
+            }
+        }
+        catch (Exception exception)
+        {
+            var str = GetMessage(exception);
+            Trace.WriteLine(str);
+        }
+    }
+
+    private static string ToJson(this object value)
+    {
+        if (value == null)
+            return "null";
+
+        if (value is string message)
+            return message;
+
+        try
+        {
+            return JsonSerializer.Serialize(value);
+        }
+        catch
+        {
+            try
+            {
+                return value.ToString();
+            }
+            catch
+            {
+                return $"SmartLogger Error: cannot convert object of type {value.GetType().FullName} to JSON";
             }
         }
     }
