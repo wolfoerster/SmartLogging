@@ -15,15 +15,14 @@
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 //******************************************************************************************
 
-namespace SmartLogging
+namespace SmartLogging;
+
+internal class LogEntry
 {
-    internal class LogEntry
-    {
-        public string Time { get; set; }
-        public int ThreadId { get; set; }
-        public string Level { get; set; }
-        public string Class { get; set; }
-        public string Method { get; set; }
-        public string Message { get; set; }
-    }
+    public string Time { get; set; }
+    public int ThreadId { get; set; }
+    public string Level { get; set; }
+    public string Class { get; set; }
+    public string Method { get; set; }
+    public string Message { get; set; }
 }

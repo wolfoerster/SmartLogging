@@ -41,10 +41,10 @@ public static class LogWriter
     public static string FileName { get; private set; }
 
     /// <summary>
-    /// The minimum log level which will be processed.
+    /// Gets or sets the minimum log level which will be processed.
     /// Log entries with a log level smaller than this value will not be processed.
     /// </summary>
-    public static LogLevel MinimumLogLevel = LogLevel.Information;
+    public static LogLevel MinimumLogLevel { get; set; } = LogLevel.Information;
 
     /// <summary>
     /// Optionally initializes the log writer. You only need to call this method,
@@ -58,8 +58,11 @@ public static class LogWriter
     /// name plus '.log' (e.g. MyApp.log.log) and a new file with the original name is created.</param>
     public static void Init(string fileName = null, long maxLength = 16 * 1024 * 1024)
     {
-        if (WriterTask != null || maxLength < 1024)
+        if (WriterTask != null)
             return;
+
+        if (maxLength < 1024)
+            maxLength = 1024;
 
         if (fileName == null)
         {
