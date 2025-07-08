@@ -15,7 +15,7 @@
     <Description>Smart file based logging in JSON format</Description>
     <PackageReleaseNotes>Consolidated successor of version 0.9</PackageReleaseNotes>
     <Copyright>Copyright © 2006 - 2025 Wolfgang Foerster (wolfoerster@gmx.de)</Copyright>
-    <PackageTags>.NET;Logging;JSON</PackageTags>
+    <PackageTags>.NET;JSON;Logging</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
