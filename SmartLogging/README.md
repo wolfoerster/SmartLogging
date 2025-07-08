@@ -1,5 +1,5 @@
 # SmartLogging
-Easy to use .NET file based logging framework.
+Easy to use .NET file based logging framework using JSON.
 
 ## Overview
 The SmartLogging package exports two main classes: SmartLogger and LogWriter.
