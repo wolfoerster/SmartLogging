@@ -1,29 +1,37 @@
 ﻿using System;
 using SmartLogging;
 
-namespace TestApp
+namespace TestApp;
+
+internal class Program
 {
-    internal class Program
+    private static SmartLogger Log = new();
+
+    static void Main(string[] args)
     {
-        static void Main(string[] args)
+        Console.WriteLine("Press [Esc] to quit ...");
+
+        LogWriter.Init();
+
+        while (true)
         {
-            Console.WriteLine("Press [Esc] to quit ...");
+            var keyInfo = Console.ReadKey();
+            Log.Information(keyInfo);
 
-            LogWriter.Init();
-            var logger = new SmartLogger();
-
-            while (true)
+            if (keyInfo.Key == ConsoleKey.Escape)
             {
-                var keyInfo = Console.ReadKey();
-                logger.Information(keyInfo);
-
-                if (keyInfo.Key == ConsoleKey.Escape)
-                {
-                    break;
-                }
+                break;
             }
-
-            LogWriter.Exit();
         }
+
+        DoSomething("asd", 123);
+        Log.Information(DateTime.Now);
+        LogWriter.Exit();
+    }
+
+    private static void DoSomething(string name, int age)
+    {
+        Log.Information($"name={name},age={age}");
+        Log.Information(new { name, age });
     }
 }

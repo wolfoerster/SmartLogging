@@ -75,24 +75,38 @@ Even if you call any of the SmartLogger's methods without parameter, e.g.
 
 you will have a log entry which shows the time, the class name and the method name.
 
-#### Using Anonymous Objects
-Consider a method like this:
+### Logging Objects
+The nice thing about SmartLogger is that it not only logs simple strings but also 
+objects. If you do a call like this:
 
-`void Something(string name, double age)`
+`Log.Information(DateTime.Now);`
 
-And you call it like this:
+then the JSON-serialized DateTime object will appear as message in your log entry:
 
-`Something("asd", "123");`
+`{"Time":"2025-07-09T12:49:18.9541781Z",
+"ThreadId":1,"Level":"Information", "Class":"TestApp.Program",
+"Method":"Main","Message":"\"2025-07-09T14:49:18.9412736+02:00\""}`
 
-If you log the parameters like this:
+This is especially usefull when logging the parameters of a method.
+Consider the following method:
+
+`void DoSomething(string name, double age)`
+
+If a logger can only log simple strings you would have to do this:
+
+`Log.Information($"name={name},age={age}");`
+
+With SmartLogger you can simply do this:
 
 `Log.Information(new {name, age})`
 
-You will get a log entry with this message:
+You will get this log entry:
 
-"{ "name": "asd",  "age": 123 }"
+`{"Time":"2025-07-09T13:23:22.9126806Z",
+"ThreadId":1,"Level":"Information","Class":"TestApp.Program",
+"Method":"DoSomething","Message":"{\"name\":\"asd\",\"age\":123}"}`
 
-#### LogWriter
+### LogWriter Details
 If you don't explicitely call the (one and only) LogWriter, your log entries will 
 be written to the current user's temporary directory into a file called 
 *"name of your application.log*", the maximum file size will be 16 MB and the 
