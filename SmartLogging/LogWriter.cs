@@ -136,24 +136,25 @@ public static class LogWriter
     private static void WriterLoop()
     {
         var i = 0;
+        var ok = 2;
         var t0 = DateTime.UtcNow;
         var entries = new List<LogEntry>();
 
-        var ok = 2;
         while (ok > 0)
         {
-            Thread.Sleep(30);
+            if (ok == 2)
+                Thread.Sleep(30);
 
             while (LogEntries.TryDequeue(out LogEntry entry))
                 entries.Add(entry);
 
             if (TokenSource.Token.IsCancellationRequested
-                || (DateTime.UtcNow - t0).TotalSeconds > 1) // every second
+                || (DateTime.UtcNow - t0).TotalSeconds > 0.5) // every 0.5 seconds
             {
                 AppendToFile(entries);
                 entries.Clear();
 
-                if (++i == 10) // every 10 seconds
+                if (++i == 20) // every 10 seconds
                 {
                     i = 0;
                     CheckFileSize();

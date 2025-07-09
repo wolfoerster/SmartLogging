@@ -124,14 +124,6 @@ public class SmartLogger
     }
 
     /// <summary>
-    /// Creates a log entry with level Error that contains exception details.
-    /// </summary>
-    public void Exception(Exception exception, [CallerMemberName] string methodName = null)
-    {
-        this.Error(exception.ToString());
-    }
-
-    /// <summary>
     /// Creates a log entry with the specified level.
     /// </summary>
     public void Write(object msg, LogLevel level, [CallerMemberName] string methodName = null)

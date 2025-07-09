@@ -31,6 +31,16 @@ internal class Program
             }
         }
 
+        try
+        {
+            var innerException = new ArgumentException("this is a bad argument", "badarg");
+            throw new AggregateException("this is an AggregateException", innerException);
+        }
+        catch (Exception exception)
+        {
+            Log.Warning(exception.ToString());
+        }
+
         DoSomething("asd", 123);
         Log.Information(DateTime.Now);
 
@@ -50,7 +60,7 @@ internal class Program
         {
             var level = ++i % 7;
             Log.Write(i, (LogLevel)level);
-            Thread.Sleep(30);
+            Thread.Sleep(30 + level);
         }
     }
 }
