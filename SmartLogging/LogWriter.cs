@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
@@ -132,44 +133,38 @@ public static class LogWriter
         }
     }
 
-    internal static string GetMessage(this Exception exception)
-    {
-        var sb = new StringBuilder();
-        sb.Append(exception.Message);
-
-        exception = exception.InnerException;
-        while (exception != null)
-        {
-            sb.Append(" InnerException: ");
-            sb.Append(exception.Message);
-            exception = exception.InnerException;
-        }
-
-        return sb.ToString();
-    }
-
     private static void WriterLoop()
     {
-        DateTime t0 = DateTime.UtcNow;
+        var i = 0;
+        var t0 = DateTime.UtcNow;
+        var entries = new List<LogEntry>();
 
-        while (true)
+        var ok = 2;
+        while (ok > 0)
         {
-            while (LogEntries.TryDequeue(out LogEntry entry))
-            {
-                AppendToFile(entry);
-            }
-
             Thread.Sleep(30);
 
-            if ((DateTime.UtcNow - t0).TotalSeconds > 10)
+            while (LogEntries.TryDequeue(out LogEntry entry))
+                entries.Add(entry);
+
+            if (TokenSource.Token.IsCancellationRequested
+                || (DateTime.UtcNow - t0).TotalSeconds > 1) // every second
             {
-                CheckFileSize();
+                AppendToFile(entries);
+                entries.Clear();
+
+                if (++i == 10) // every 10 seconds
+                {
+                    i = 0;
+                    CheckFileSize();
+                }
+
                 t0 = DateTime.UtcNow;
             }
 
-            if (TokenSource.Token.IsCancellationRequested && LogEntries.Count == 0)
+            if (TokenSource.Token.IsCancellationRequested)
             {
-                break;
+                --ok;
             }
         }
     }
@@ -198,33 +193,42 @@ public static class LogWriter
         }
         catch (Exception exception)
         {
-            try
-            {
-                var str = exception.GetMessage();
-                var name = FileName + ".ex.log";
-                File.WriteAllText(name, exception.ToString());
-            }
-            catch 
-            {
-            }
+            LogException(exception);
         }
     }
 
-    private static void AppendToFile(LogEntry entry)
+    private static void LogException(Exception exception)
     {
+        try
+        {
+            var name = FileName + ".ex.log";
+            File.AppendAllText(name, $"\n{exception}\n");
+        }
+        catch
+        {
+        }
+    }
+
+    private static void AppendToFile(List<LogEntry> entries)
+    {
+        if (entries.Count == 0)
+            return;
+
         try
         {
             lock (Locker)
             {
                 using StreamWriter sw = File.AppendText(FileName);
-                var json = ToJson(entry);
-                sw.WriteLine(json);
+                foreach (var entry in entries)
+                {
+                    var json = ToJson(entry);
+                    sw.WriteLine(json);
+                }
             }
         }
         catch (Exception exception)
         {
-            var str = GetMessage(exception);
-            Trace.WriteLine(str);
+            LogException(exception);
         }
     }
 

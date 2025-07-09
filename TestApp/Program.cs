@@ -1,17 +1,24 @@
 ﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
 using SmartLogging;
 
 namespace TestApp;
 
 internal class Program
 {
-    private static SmartLogger Log = new();
+    private static readonly SmartLogger Log = new();
+    private static readonly CancellationTokenSource TokenSource = new();
 
     static void Main(string[] args)
     {
         Console.WriteLine("Press [Esc] to quit ...");
 
         LogWriter.Init();
+        LogWriter.MinimumLogLevel = LogLevel.Verbose;
+
+        Task.Run(() => Method1(111, TokenSource.Token));
+        Task.Run(() => Method1(3333, TokenSource.Token));
 
         while (true)
         {
@@ -26,6 +33,8 @@ internal class Program
 
         DoSomething("asd", 123);
         Log.Information(DateTime.Now);
+
+        TokenSource.Cancel();
         LogWriter.Exit();
     }
 
@@ -33,5 +42,15 @@ internal class Program
     {
         Log.Information($"name={name},age={age}");
         Log.Information(new { name, age });
+    }
+
+    private static void Method1(int i, CancellationToken token)
+    {
+        while (!token.IsCancellationRequested)
+        {
+            var level = ++i % 7;
+            Log.Write(i, (LogLevel)level);
+            Thread.Sleep(30);
+        }
     }
 }

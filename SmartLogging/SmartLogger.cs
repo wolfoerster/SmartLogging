@@ -128,7 +128,7 @@ public class SmartLogger
     /// </summary>
     public void Exception(Exception exception, [CallerMemberName] string methodName = null)
     {
-        this.Error(new { ExceptionMessage = exception.GetMessage(), exception.StackTrace }, methodName);
+        this.Error(exception.ToString());
     }
 
     /// <summary>
