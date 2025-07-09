@@ -10,18 +10,19 @@
     <PackageVersion>1.0.0</PackageVersion>
     <Title>SmartLogging</Title>
     <Authors>Wolfgang Foerster</Authors>
-    <PackageLicenseExpression>GNU</PackageLicenseExpression>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/wolfoerster/SmartLogging</PackageProjectUrl>
     <Description>File based logging in JSON format</Description>
     <PackageReleaseNotes>Consolidated successor of version 0.9</PackageReleaseNotes>
     <Copyright>Copyright © 2017 - 2025 Wolfgang Foerster (wolfoerster@gmx.de)</Copyright>
     <PackageTags>Logging;.NET;JSON</PackageTags>
-    <PackageReadmeFile>..\README.md</PackageReadmeFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
     <None Remove=".gitattributes" />
     <None Remove=".gitignore" />
+    <None Include="..\README.md" Pack="true" PackagePath=""/>
   </ItemGroup>
 
   <ItemGroup>
