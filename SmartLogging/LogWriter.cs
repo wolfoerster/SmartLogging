@@ -21,9 +21,9 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Text;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 
 namespace SmartLogging;
 
@@ -238,7 +238,7 @@ public static class LogWriter
 
         try
         {
-            return JsonSerializer.Serialize(value);
+            return JsonConvert.SerializeObject(value, Formatting.None);
         }
         catch
         {
