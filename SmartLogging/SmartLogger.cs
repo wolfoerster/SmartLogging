@@ -23,16 +23,16 @@ using System.Runtime.CompilerServices;
 
 public class SmartLogger
 {
-    private readonly string className;
+    private readonly string context;
 
     /// <summary>
     /// Creates a new SmartLogger with an optional log context.
-    /// The log context can be a string, a type or the instance of an object.
-    /// It is used to set the 'Class' property of each log entry made by this logger.
+    /// The incoming context can be a string, a type or the instance of an object.
+    /// It is used to set the 'Context' property of each log entry made by this logger.
     /// <para/>
-    /// 1. if 'context' is a string, this string will be used as class name
+    /// 1. if 'context' is a string, this string will be used as context
     /// <para/>
-    /// 2. if 'context' is a type, the full typename will be used as class name
+    /// 2. if 'context' is a type, the full typename will be used as context
     /// <para/>
     /// If 'context' is an instance of an object, the object's type will go into 2.
     /// <para/>
@@ -48,20 +48,20 @@ public class SmartLogger
             context = method.DeclaringType;
         }
 
-        this.className = GetClassName(context);
+        this.context = GetContext(context);
     }
 
-    private static string GetClassName(object context)
+    private static string GetContext(object context)
     {
         if (context is Type type)
             return type.FullName;
 
-        if (context is string className)
+        if (context is string str)
         {
-            if (string.IsNullOrWhiteSpace(className))
+            if (string.IsNullOrWhiteSpace(str))
                 return "-?-";
 
-            return className;
+            return str;
         }
 
         return context.GetType().FullName;
@@ -128,6 +128,6 @@ public class SmartLogger
     /// </summary>
     public void Write(object msg, LogLevel level, [CallerMemberName] string methodName = null)
     {
-        LogWriter.Write(msg, level, className, methodName);
+        LogWriter.Write(msg, level, context, methodName);
     }
 }

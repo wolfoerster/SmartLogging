@@ -17,8 +17,9 @@ internal class Program
         LogWriter.Init();
         LogWriter.MinimumLogLevel = LogLevel.Verbose;
 
-        Task.Run(() => Method1(111, TokenSource.Token));
-        Task.Run(() => Method1(3333, TokenSource.Token));
+        Log.Information("this message is for you");
+        Task.Run(() => Method1(111));
+        Task.Run(() => Method1(3333));
 
         while (true)
         {
@@ -54,9 +55,9 @@ internal class Program
         Log.Information(new { name, age });
     }
 
-    private static void Method1(int i, CancellationToken token)
+    private static void Method1(int i)
     {
-        while (!token.IsCancellationRequested)
+        while (!TokenSource.Token.IsCancellationRequested)
         {
             var level = ++i % 7;
             Log.Write(i, (LogLevel)level);

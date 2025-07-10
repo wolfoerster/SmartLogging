@@ -17,12 +17,35 @@
 
 namespace SmartLogging;
 
-internal class LogEntry
+public class LogEntry
 {
+    /// <summary>
+    /// The UTC creation time in invariant roundtrip format.
+    /// </summary>
     public string Time { get; set; }
+
+    /// <summary>
+    /// The managed thread id of the calling method.
+    /// </summary>
     public int ThreadId { get; set; }
+
+    /// <summary>
+    /// The log level.
+    /// </summary>
     public string Level { get; set; }
-    public string Class { get; set; }
+
+    /// <summary>
+    /// The log context (usually the class name of the calling method).
+    /// </summary>
+    public string Context { get; set; }
+
+    /// <summary>
+    /// The name of the calling method.
+    /// </summary>
     public string Method { get; set; }
+
+    /// <summary>
+    /// The log message.
+    /// </summary>
     public string Message { get; set; }
 }

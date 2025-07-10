@@ -12,11 +12,9 @@ A log entry contains the following information:
 1. creation time of the entry
 2. thread id of the calling thread
 3. log level (a value between 0 and 6)
-4. log context (the name of the calling class)
-5. log method (the name of the calling method)
-6. log message
-
-The log message is a simple string or the JSON representation of an object. 
+4. log context (usually the name of the calling class)
+5. log method (usually the name of the calling method)
+6. log message (a simple string or the JSON representation of an object)
 
 ### LogWriter
 LogWriter is a static class, so there is only one instance per application. 
@@ -65,8 +63,12 @@ And when you want to create a log entry inside a method you will call:
 
 `Log.Information("this message is for you");`
 
-The resulting log entry will contain all of the 6 properties mentioned above. 
-The log context (class name) is extracted from the declaration of the logger 
+The resulting log entry looks like this:
+
+`{"Time":"2025-07-10T08:55:55.3391580Z","ThreadId":1,"Level":"Information",
+"Context":"TestApp.Program","Method":"Main","Message":"this message is for you"}`
+
+The log context is extracted from the declaration of the logger 
 and the method name is extracted from the actual logging statement.
 
 Even if you call any of the SmartLogger's methods without parameter, e.g.
@@ -83,11 +85,11 @@ objects. If you do a call like this:
 
 then the JSON-serialized DateTime object will appear as message in your log entry:
 
-`{"Time":"2025-07-09T12:49:18.9541781Z",
-"ThreadId":1,"Level":"Information", "Class":"TestApp.Program",
-"Method":"Main","Message":"\"2025-07-09T14:49:18.9412736+02:00\""}`
+`{"Time":"2025-07-09T12:49:18.9541781Z","ThreadId":1,"Level":"Information",
+"Context":"TestApp.Program","Method":"Main",
+"Message":"\"2025-07-09T14:49:18.9412736+02:00\""}`
 
-This is especially usefull when logging the parameters of a method.
+This is especially usefull when logging parameters of a method.
 Consider the following method:
 
 `void DoSomething(string name, double age)`
@@ -103,14 +105,14 @@ With SmartLogger you can simply do this:
 You will get this log entry:
 
 `{"Time":"2025-07-09T13:23:22.9126806Z",
-"ThreadId":1,"Level":"Information","Class":"TestApp.Program",
+"ThreadId":1,"Level":"Information","Context":"TestApp.Program",
 "Method":"DoSomething","Message":"{\"name\":\"asd\",\"age\":123}"}`
 
 ### LogWriter Details
-If you don't explicitely call the (one and only) LogWriter, your log entries will 
-be written to the current user's temporary directory into a file called 
-*"name of your application.log*", the maximum file size will be 16 MB and the 
-minimum log level will be *Information*.
+If you don't explicitely call the (one and only) LogWriter's Init() method,
+your log entries will be written to the current user's temporary directory 
+into a file called *"name of your application.log*", the maximum file size 
+will be 16 MB and the minimum log level will be *Information*.
 
 If you want to change the default behaviour, you can call
 
@@ -122,7 +124,7 @@ and set the minimum log level with e.g.
 
 If the log file exceeds the maximum size of 16 MB or the size specified by 
 *LogWriter.Init()* the current log file is copied to a file called *"MyApp.log.log"*
-if the original file is called *"MyApp.log"* and a new file *"MyApp.log"* is created.
+if the original file is called *"MyApp.log"* and the file *"MyApp.log"* is cleared.
 
 #### LogWriter.Exit()
 When your application terminates the LogWriter might not yet be done with writing

@@ -1,19 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net8.0;net48</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <LangVersion>latestMajor</LangVersion>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
 
     <PackageId>SmartLogging</PackageId>
-    <PackageVersion>1.0.1</PackageVersion>
+    <PackageVersion>2.0.0</PackageVersion>
     <Title>SmartLogging</Title>
     <Authors>Wolfgang Foerster</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/wolfoerster/SmartLogging</PackageProjectUrl>
     <Description>File based logging in JSON format</Description>
-    <PackageReleaseNotes>Consolidated successor of version 1.0.0</PackageReleaseNotes>
+    <PackageReleaseNotes>Class LogEntry has changed and is now public.</PackageReleaseNotes>
     <Copyright>Copyright © 2017 - 2025 Wolfgang Foerster (wolfoerster@gmx.de)</Copyright>
     <PackageTags>Logging;.NET;JSON</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

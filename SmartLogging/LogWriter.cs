@@ -18,10 +18,9 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -30,10 +29,13 @@ namespace SmartLogging;
 
 public static class LogWriter
 {
+    private const long DefaultFileSize = 16 * 1024 * 1024;
+    private const long MinFileSize = 64 * 1024;
     private static readonly ConcurrentQueue<LogEntry> LogEntries = new();
     private static readonly CancellationTokenSource TokenSource = new();
+    private static readonly SmartLogger Log = new();
     private static readonly object Locker = new();
-    private static long MaxLength;
+    private static long MaxFileSize;
     private static Task WriterTask;
 
     /// <summary>
@@ -54,16 +56,16 @@ public static class LogWriter
     /// <param name="fileName">The full qualified name of the log file. If this parameter is null
     /// the name of the entry assembly is used for the file name and the extension will be '.log'
     /// and the file will be located in the current user's temporary directory.</param>
-    /// <param name="maxLength">The maximum size of the log file (default is 16 MB).
+    /// <param name="maxFileSize">The maximum size of the log file (default is 16 MB).
     /// If the log file exceeds the maximum size it will be copied to a file who's name is the original
     /// name plus '.log' (e.g. MyApp.log.log) and a new file with the original name is created.</param>
-    public static void Init(string fileName = null, long maxLength = 16 * 1024 * 1024)
+    public static void Init(string fileName = null, long maxFileSize = DefaultFileSize)
     {
         if (WriterTask != null)
             return;
 
-        if (maxLength < 1024)
-            maxLength = 1024;
+        if (maxFileSize < MinFileSize)
+            maxFileSize = MinFileSize;
 
         if (fileName == null)
         {
@@ -75,11 +77,9 @@ public static class LogWriter
             FileName = fileName;
         }
 
-        MaxLength = maxLength;
+        MaxFileSize = maxFileSize;
         WriterTask = Task.Run(() => WriterLoop());
-
-        var log = new SmartLogger(typeof(SmartLogger));
-        log.None("Start logging");
+        Log.None("Start logging");
     }
 
     /// <summary>
@@ -88,6 +88,8 @@ public static class LogWriter
     /// </summary>
     public static bool Exit(long maxResponseTime = 100)
     {
+        Log.None("Stop logging");
+
         if (maxResponseTime < 100)
             maxResponseTime = 100;
 
@@ -106,7 +108,7 @@ public static class LogWriter
         }
     }
 
-    internal static void Write(object msg, LogLevel level, string className, string methodName)
+    internal static void Write(object msg, LogLevel level, string context, string methodName)
     {
         if (level < MinimumLogLevel)
             return;
@@ -116,16 +118,7 @@ public static class LogWriter
             if (WriterTask == null)
                 Init();
 
-            var entry = new LogEntry
-            {
-                Time = DateTime.UtcNow.ToString("o"),
-                ThreadId = Thread.CurrentThread.ManagedThreadId,
-                Level = level.ToString(),
-                Class = className,
-                Method = methodName,
-                Message = msg.ToJson(),
-            };
-
+            var entry = CreateEntry(msg, level, context, methodName);
             LogEntries.Enqueue(entry);
         }
         catch
@@ -133,9 +126,18 @@ public static class LogWriter
         }
     }
 
+    private static LogEntry CreateEntry(object msg, LogLevel level, string context, string methodName) => new()
+    {
+        Time = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture),
+        ThreadId = Environment.CurrentManagedThreadId,
+        Level = level.ToString(),
+        Context = context,
+        Method = methodName,
+        Message = msg.ToJson(),
+    };
+
     private static void WriterLoop()
     {
-        var i = 0;
         var ok = 2;
         var t0 = DateTime.UtcNow;
         var entries = new List<LogEntry>();
@@ -151,13 +153,11 @@ public static class LogWriter
             if (TokenSource.Token.IsCancellationRequested
                 || (DateTime.UtcNow - t0).TotalSeconds > 0.5) // every 0.5 seconds
             {
-                AppendToFile(entries);
-                entries.Clear();
-
-                if (++i == 20) // every 10 seconds
+                if (entries.Count > 0)
                 {
-                    i = 0;
-                    CheckFileSize();
+                    CheckFileSize(FileName);
+                    AppendToFile(entries);
+                    entries.Clear();
                 }
 
                 t0 = DateTime.UtcNow;
@@ -170,51 +170,8 @@ public static class LogWriter
         }
     }
 
-    private static void CheckFileSize()
-    {
-        if (!File.Exists(FileName))
-            return;
-
-        try
-        {
-            var fileInfo = new FileInfo(FileName);
-            if (fileInfo.Length > MaxLength)
-            {
-                var backupName = FileName + ".log";
-
-                lock (Locker)
-                {
-                    File.Delete(backupName);
-                    File.Move(FileName, backupName);
-                }
-
-                var log = new SmartLogger(typeof(SmartLogger));
-                log.None(new { message = "log file exceeded maximum size", logFileSize = fileInfo.Length, allowedSize = MaxLength, backupName });
-            }
-        }
-        catch (Exception exception)
-        {
-            LogException(exception);
-        }
-    }
-
-    private static void LogException(Exception exception)
-    {
-        try
-        {
-            var name = FileName + ".ex.log";
-            File.AppendAllText(name, $"\n{exception}\n");
-        }
-        catch
-        {
-        }
-    }
-
     private static void AppendToFile(List<LogEntry> entries)
     {
-        if (entries.Count == 0)
-            return;
-
         try
         {
             lock (Locker)
@@ -236,7 +193,7 @@ public static class LogWriter
     private static string ToJson(this object value)
     {
         if (value == null)
-            return "null";
+            return string.Empty;
 
         if (value is string message)
             return message;
@@ -256,5 +213,96 @@ public static class LogWriter
                 return $"SmartLogger Error: cannot convert object of type {value.GetType().FullName} to JSON";
             }
         }
+    }
+
+    private static void CheckFileSize(string fileName)
+    {
+        if (!File.Exists(fileName))
+            return;
+
+        try
+        {
+            var fileInfo = new FileInfo(fileName);
+            if (fileInfo.Length > MaxFileSize)
+            {
+                var backupName = fileName + ".log";
+
+                lock (Locker)
+                {
+                    File.Delete(backupName);
+                    File.Copy(fileName, backupName);
+
+                    var msg = $"Log file {Path.GetFileName(fileName)} exceeded maximum size of {MaxFileSize.ToStringNumBytes()}. Copied to {Path.GetFileName(backupName)} in directory {Path.GetDirectoryName(backupName)}.";
+                    var entry = CreateEntry(msg, LogLevel.None, typeof(LogWriter).FullName, "CheckFileSize");
+                    var json = entry.ToJson();
+                    File.WriteAllText(fileName, $"{entry.ToJson()}\n");
+                }
+            }
+        }
+        catch (Exception exception)
+        {
+            LogException(exception);
+        }
+    }
+
+    private static void LogException(Exception exception)
+    {
+        try
+        {
+            var fileName = FileName + ".ex.log";
+            CheckFileSize(fileName);
+            File.AppendAllText(fileName, $"\n{exception.ToString()}\n");
+        }
+        catch
+        {
+        }
+    }
+
+    public static string ToStringNumBytes(this long i)
+    {
+        string suffix;
+        double readable;
+        long absolute_i = (i < 0 ? -i : i);
+
+        if (absolute_i >= 0x1000000000000000) // Exabyte
+        {
+            suffix = "EB";
+            readable = (i >> 50);
+        }
+        else if (absolute_i >= 0x4000000000000) // Petabyte
+        {
+            suffix = "PB";
+            readable = (i >> 40);
+        }
+        else if (absolute_i >= 0x10000000000) // Terabyte
+        {
+            suffix = "TB";
+            readable = (i >> 30);
+        }
+        else if (absolute_i >= 0x40000000) // Gigabyte
+        {
+            suffix = "GB";
+            readable = (i >> 20);
+        }
+        else if (absolute_i >= 0x100000) // Megabyte
+        {
+            suffix = "MB";
+            readable = (i >> 10);
+        }
+        else if (absolute_i >= 0x400) // Kilobyte
+        {
+            suffix = "KB";
+            readable = i;
+        }
+        else
+        {
+            return i.ToString("0 B"); // Byte
+        }
+
+        // divide by 1024 to get fractional value
+        readable = (readable / 1024);
+
+        // return formatted number with suffix
+        return readable.ToString("0.### ") + suffix;
     }
 }
