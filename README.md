@@ -20,7 +20,14 @@ A log entry contains the following information:
 LogWriter is a static class, so there is only one instance per application. 
 LogWriter lets you specify the log file, its maximum allowed size and the minimimum
 log level to be processed. In most cases you will be happy with the default settings
-of LogWriter, so you won't have to deal with this class.
+of LogWriter, so you won't have to deal with this class except for one method:
+
+### LogWriter.Exit()
+
+The LogWriter cashes log entries before they are written to disk. So if your
+application terminates unexpectedly there might be a few entries in the cache
+which you will not see in the log file. To avoid this call `LogWriter.Exit()`
+when your application is about to stop.
 
 ### LogLevel
 The enum LogLevel defines 7 levels:
@@ -116,17 +123,14 @@ will be 16 MB and the minimum log level will be *Information*.
 
 If you want to change the default behaviour, you can call
 
-`LogWriter.Init(string fileName, long maxLength)`
+`LogWriter.Init(string fileName, long maxSize)`
 
 and set the minimum log level with e.g.
 
 `LogWriter.MinimumLogLevel = LogLevel.Warning`
 
-If the log file exceeds the maximum size of 16 MB or the size specified by 
-*LogWriter.Init()* the current log file is copied to a file called *"MyApp.log.log"*
-if the original file is called *"MyApp.log"* and the file *"MyApp.log"* is cleared.
+Note that the lowest accepted maxSize is 16 kB.
 
-#### LogWriter.Exit()
-When your application terminates the LogWriter might not yet be done with writing
-all log entries to disk. Make a call to *"LogWriter.Exit()"* to ensure that all 
-entries are processed.
+If the log file exceeds the maximum size the current log file is copied to a 
+file called *"MyApp.log.log"* if the original file is called *"MyApp.log"* 
+and the file *"MyApp.log"* is cleared.
