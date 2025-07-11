@@ -8,14 +8,14 @@
 
     <Title>SmartLogging</Title>
     <PackageId>SmartLogging</PackageId>
-    <Version>2.0.0</Version>
-    <PackageVersion>2.0.0</PackageVersion>
+    <Version>2.1.0</Version>
+    <PackageVersion>2.1.0</PackageVersion>
     <Authors>Wolfgang Foerster</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/wolfoerster/SmartLogging</RepositoryUrl>
     <PackageProjectUrl>https://github.com/wolfoerster/SmartLogging</PackageProjectUrl>
     <Description>File based logging in JSON format</Description>
-    <PackageReleaseNotes>Class LogEntry has changed and is now public.</PackageReleaseNotes>
+    <PackageReleaseNotes>Safer handling of invalid log file names.</PackageReleaseNotes>
     <Copyright>Copyright © 2017 - 2025 Wolfgang Foerster (wolfoerster@gmx.de)</Copyright>
     <PackageTags>Logging;.NET;JSON</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

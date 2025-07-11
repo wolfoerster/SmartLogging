@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
@@ -29,8 +30,9 @@ namespace SmartLogging;
 
 public static class LogWriter
 {
+    private const long MinMaxFileSize = 64 * 1024;
+    private const long MaxMaxFileSize = 64 * 1024 * 1024;
     private const long DefaultFileSize = 16 * 1024 * 1024;
-    private const long MinFileSize = 64 * 1024;
     private static readonly ConcurrentQueue<LogEntry> LogEntries = new();
     private static readonly CancellationTokenSource TokenSource = new();
     private static readonly SmartLogger Log = new();
@@ -51,7 +53,7 @@ public static class LogWriter
 
     /// <summary>
     /// Optionally initializes the log writer. You only need to call this method,
-    /// if you want to change the default log file name or the default maximum log file size.
+    /// if you want to change the default log file name or the default maximum log file size of 16 MB.
     /// </summary>
     /// <param name="fileName">The full qualified name of the log file. If this parameter is null
     /// the name of the entry assembly is used for the file name and the extension will be '.log'
@@ -62,24 +64,30 @@ public static class LogWriter
     public static void Init(string fileName = null, long maxFileSize = DefaultFileSize)
     {
         if (WriterTask != null)
+        {
+            Log.None("Attemp was made to call Init() repeatedly");
             return;
+        }
 
-        if (maxFileSize < MinFileSize)
-            maxFileSize = MinFileSize;
-
+        FileName = fileName;
         if (fileName == null)
         {
             var name = Path.GetFileNameWithoutExtension(Assembly.GetEntryAssembly().Location);
             FileName = Path.Combine(Path.GetTempPath(), $"{name}.log");
         }
-        else
+
+        try
         {
-            FileName = fileName;
+            var entry = CreateEntry("Start logging", LogLevel.None, typeof(LogWriter).FullName, "Init");
+            AppendToFile([entry.ToJson()]);
+        }
+        catch (Exception ex)
+        {
+            throw new ArgumentException("The specified file name is invalid.", fileName, ex);
         }
 
-        MaxFileSize = maxFileSize;
+        MaxFileSize = Math.Min(Math.Max(maxFileSize, MinMaxFileSize), MaxMaxFileSize);
         WriterTask = Task.Run(() => WriterLoop());
-        Log.None("Start logging");
     }
 
     /// <summary>
@@ -121,8 +129,9 @@ public static class LogWriter
             var entry = CreateEntry(msg, level, context, methodName);
             LogEntries.Enqueue(entry);
         }
-        catch
+        catch (Exception ex)
         {
+            Debug.WriteLine(ex);
         }
     }
 
@@ -140,7 +149,7 @@ public static class LogWriter
     {
         var ok = 2;
         var t0 = DateTime.UtcNow;
-        var entries = new List<LogEntry>();
+        var entries = new List<string>();
 
         while (ok > 0)
         {
@@ -148,16 +157,23 @@ public static class LogWriter
                 Thread.Sleep(30);
 
             while (LogEntries.TryDequeue(out LogEntry entry))
-                entries.Add(entry);
+                entries.Add(entry.ToJson());
 
             if (TokenSource.Token.IsCancellationRequested
                 || (DateTime.UtcNow - t0).TotalSeconds > 0.5) // every 0.5 seconds
             {
                 if (entries.Count > 0)
                 {
-                    CheckFileSize(FileName);
-                    AppendToFile(entries);
-                    entries.Clear();
+                    try
+                    {
+                        CheckFileSize(FileName);
+                        AppendToFile(entries);
+                        entries.Clear();
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine(ex);
+                    }
                 }
 
                 t0 = DateTime.UtcNow;
@@ -170,23 +186,16 @@ public static class LogWriter
         }
     }
 
-    private static void AppendToFile(List<LogEntry> entries)
+    private static void AppendToFile(List<string> lines)
     {
-        try
+        // don't catch exceptions!
+        lock (Locker)
         {
-            lock (Locker)
+            using StreamWriter sw = File.AppendText(FileName);
+            foreach (var line in lines)
             {
-                using StreamWriter sw = File.AppendText(FileName);
-                foreach (var entry in entries)
-                {
-                    var json = ToJson(entry);
-                    sw.WriteLine(json);
-                }
+                sw.WriteLine(line);
             }
-        }
-        catch (Exception exception)
-        {
-            LogException(exception);
         }
     }
 
@@ -220,41 +229,34 @@ public static class LogWriter
         if (!File.Exists(fileName))
             return;
 
-        try
+        var fileInfo = new FileInfo(fileName);
+        if (fileInfo.Length > MaxFileSize)
         {
-            var fileInfo = new FileInfo(fileName);
-            if (fileInfo.Length > MaxFileSize)
+            var backupName = fileName + ".log";
+
+            // don't catch exceptions!
+            lock (Locker)
             {
-                var backupName = fileName + ".log";
+                File.Copy(fileName, backupName, true);
 
-                lock (Locker)
-                {
-                    File.Delete(backupName);
-                    File.Copy(fileName, backupName);
-
-                    var msg = $"Log file {Path.GetFileName(fileName)} exceeded maximum size of {MaxFileSize.ToStringNumBytes()}. Copied to {Path.GetFileName(backupName)} in directory {Path.GetDirectoryName(backupName)}.";
-                    var entry = CreateEntry(msg, LogLevel.None, typeof(LogWriter).FullName, "CheckFileSize");
-                    var json = entry.ToJson();
-                    File.WriteAllText(fileName, $"{entry.ToJson()}\n");
-                }
+                var msg = $"Log file {Path.GetFileName(fileName)} exceeded maximum size of {MaxFileSize.ToStringNumBytes()}. Copied to {Path.GetFileName(backupName)} in directory {Path.GetDirectoryName(backupName)}.";
+                var entry = CreateEntry(msg, LogLevel.None, typeof(LogWriter).FullName, "CheckFileSize");
+                File.WriteAllText(fileName, $"{entry.ToJson()}\n");
             }
-        }
-        catch (Exception exception)
-        {
-            LogException(exception);
         }
     }
 
-    private static void LogException(Exception exception)
+    private static void LogException(Exception ex)
     {
         try
         {
             var fileName = FileName + ".ex.log";
             CheckFileSize(fileName);
-            File.AppendAllText(fileName, $"\n{exception.ToString()}\n");
+            File.AppendAllText(fileName, $"\n{ex.ToString()}\n");
         }
-        catch
+        catch (Exception exc)
         {
+            Debug.WriteLine(exc.ToString());
         }
     }
 

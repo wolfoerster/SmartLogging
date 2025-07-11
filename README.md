@@ -129,7 +129,7 @@ and set the minimum log level with e.g.
 
 `LogWriter.MinimumLogLevel = LogLevel.Warning`
 
-Note that the lowest accepted maxSize is 16 kB.
+Note that the lowest accepted maxSize is 64 kB and the highest is 64 MB.
 
 If the log file exceeds the maximum size the current log file is copied to a 
 file called *"MyApp.log.log"* if the original file is called *"MyApp.log"* 

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using SmartLogging;
@@ -10,9 +11,19 @@ internal class Program
     private static readonly SmartLogger Log = new();
     private static readonly CancellationTokenSource TokenSource = new();
 
-    static void Main(string[] args)
+    static void Main()
     {
         Console.WriteLine("Press [Esc] to quit ...");
+
+        try
+        {
+            // check what happens when file name is invalid
+            LogWriter.Init("A:\\*.log");
+        }
+        catch (ArgumentException ex)
+        {
+            Debug.WriteLine(ex);
+        }
 
         LogWriter.Init();
         LogWriter.MinimumLogLevel = LogLevel.Verbose;
