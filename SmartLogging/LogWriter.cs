@@ -22,6 +22,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -70,7 +71,9 @@ public static class LogWriter
         }
 
         FileName = fileName;
-        if (fileName == null)
+        MaxFileSize = Math.Min(Math.Max(maxFileSize, MinMaxFileSize), MaxMaxFileSize);
+
+        if (FileName == null)
         {
             var name = Path.GetFileNameWithoutExtension(Assembly.GetEntryAssembly().Location);
             FileName = Path.Combine(Path.GetTempPath(), $"{name}.log");
@@ -78,15 +81,13 @@ public static class LogWriter
 
         try
         {
-            var entry = CreateEntry("Start logging", LogLevel.None, typeof(LogWriter).FullName, "Init");
-            AppendToFile([entry.ToJson()]);
+            LogDirectly("Start logging");
         }
         catch (Exception ex)
         {
             throw new ArgumentException("The specified file name is invalid.", fileName, ex);
         }
 
-        MaxFileSize = Math.Min(Math.Max(maxFileSize, MinMaxFileSize), MaxMaxFileSize);
         WriterTask = Task.Run(() => WriterLoop());
     }
 
@@ -96,24 +97,28 @@ public static class LogWriter
     /// </summary>
     public static bool Exit(long maxResponseTime = 100)
     {
-        Log.None("Stop logging");
-
         if (maxResponseTime < 100)
             maxResponseTime = 100;
 
-        TokenSource.Cancel();
+        var ok = true;
         var t0 = DateTime.UtcNow;
+        TokenSource.Cancel();
+        LogDirectly("Stop logging");
 
-        while (true)
+        while (!WriterTask.IsCompleted)
         {
-            if (WriterTask.IsCompleted)
-                return true;
-
             Thread.Sleep(30);
 
             if ((DateTime.UtcNow - t0).TotalMilliseconds > maxResponseTime)
-                return false;
+            {
+                ok = false;
+                break;
+            }
         }
+
+        var msg = ok ? "all entries are processed" : "some entries might not be processed";
+        LogDirectly($"Logging stopped - {msg}");
+        return ok;
     }
 
     internal static void Write(object msg, LogLevel level, string context, string methodName)
@@ -246,21 +251,13 @@ public static class LogWriter
         }
     }
 
-    private static void LogException(Exception ex)
+    private static void LogDirectly(string msg, [CallerMemberName] string methodName = null)
     {
-        try
-        {
-            var fileName = FileName + ".ex.log";
-            CheckFileSize(fileName);
-            File.AppendAllText(fileName, $"\n{ex.ToString()}\n");
-        }
-        catch (Exception exc)
-        {
-            Debug.WriteLine(exc.ToString());
-        }
+        var entry = CreateEntry(msg, LogLevel.None, typeof(LogWriter).FullName, methodName);
+        AppendToFile([entry.ToJson()]);
     }
 
-    public static string ToStringNumBytes(this long i)
+    private static string ToStringNumBytes(this long i)
     {
         string suffix;
         double readable;
