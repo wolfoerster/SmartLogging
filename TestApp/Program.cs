@@ -26,6 +26,7 @@ internal class Program
         }
 
         LogWriter.Init();
+        LogWriter.BufferingTime = 0.5;
         LogWriter.MinimumLogLevel = LogLevel.Verbose;
 
         Log.Information("this message is for you");
@@ -57,7 +58,7 @@ internal class Program
         Log.Information(DateTime.Now);
 
         TokenSource.Cancel();
-        LogWriter.Exit();
+        LogWriter.Flush();
     }
 
     private static void DoSomething(string name, int age)

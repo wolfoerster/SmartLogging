@@ -31,15 +31,16 @@ namespace SmartLogging;
 
 public static class LogWriter
 {
-    private const long MinMaxFileSize = 64 * 1024;
-    private const long MaxMaxFileSize = 64 * 1024 * 1024;
+    private const long MinimumFileSize = 64 * 1024;
+    private const long MaximumFileSize = 64 * 1024 * 1024;
     private const long DefaultFileSize = 16 * 1024 * 1024;
-    private static readonly ConcurrentQueue<LogEntry> LogEntries = new();
-    private static readonly CancellationTokenSource TokenSource = new();
+    private static readonly ConcurrentQueue<string> LogEntries = new();
     private static readonly SmartLogger Log = new();
     private static readonly object Locker = new();
+    private static double MaxSeconds = 0.9;
     private static long MaxFileSize;
     private static Task WriterTask;
+    private static bool DoFlush;
 
     /// <summary>
     /// Gets the name of the log file.
@@ -51,6 +52,16 @@ public static class LogWriter
     /// Log entries with a log level smaller than this value will not be processed.
     /// </summary>
     public static LogLevel MinimumLogLevel { get; set; } = LogLevel.Information;
+
+    /// <summary>
+    /// Gets or sets the time in seconds the LogWriter is buffering log entries
+    /// before they are written to disk. Valid values are between 0.1 and 10.
+    /// </summary>
+    public static double BufferingTime
+    {
+        get => MaxSeconds;
+        set => MaxSeconds = Math.Min(Math.Max(value, 0.1), 10.0);
+    }
 
     /// <summary>
     /// Optionally initializes the log writer. You only need to call this method,
@@ -71,7 +82,7 @@ public static class LogWriter
         }
 
         FileName = fileName;
-        MaxFileSize = Math.Min(Math.Max(maxFileSize, MinMaxFileSize), MaxMaxFileSize);
+        MaxFileSize = Math.Min(Math.Max(maxFileSize, MinimumFileSize), MaximumFileSize);
 
         if (FileName == null)
         {
@@ -92,33 +103,47 @@ public static class LogWriter
     }
 
     /// <summary>
-    /// Optionally terminates the log writer and returns when all pending log entries are saved to file
-    /// or when the maximum response time in milliseconds is exceeded.
+    /// Writes all pending log entries to disk.
     /// </summary>
-    public static bool Exit(long maxResponseTime = 100)
+    public static void Flush()
     {
-        if (maxResponseTime < 100)
-            maxResponseTime = 100;
+        DoFlush = true;
+        Thread.Sleep(30);
+        DoFlush = false;
+    }
 
-        var ok = true;
+    private static void WriterLoop()
+    {
         var t0 = DateTime.UtcNow;
-        TokenSource.Cancel();
-        LogDirectly("Stop logging");
+        var entries = new List<string>();
 
-        while (!WriterTask.IsCompleted)
+        while (true)
         {
             Thread.Sleep(30);
 
-            if ((DateTime.UtcNow - t0).TotalMilliseconds > maxResponseTime)
+            while (LogEntries.TryDequeue(out string entry))
+                entries.Add(entry);
+
+            if (DoFlush || (DateTime.UtcNow - t0).TotalSeconds > MaxSeconds)
             {
-                ok = false;
-                break;
+                if (entries.Count > 0)
+                {
+                    try
+                    {
+                        CheckFileSize(FileName);
+                        AppendToFile(entries);
+                        entries.Clear();
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine(ex);
+                    }
+                }
+
+                DoFlush = false;
+                t0 = DateTime.UtcNow;
             }
         }
-
-        var msg = ok ? "all entries are processed" : "some entries might not be processed";
-        LogDirectly($"Logging stopped - {msg}");
-        return ok;
     }
 
     internal static void Write(object msg, LogLevel level, string context, string methodName)
@@ -132,7 +157,7 @@ public static class LogWriter
                 Init();
 
             var entry = CreateEntry(msg, level, context, methodName);
-            LogEntries.Enqueue(entry);
+            LogEntries.Enqueue(entry.ToJson());
         }
         catch (Exception ex)
         {
@@ -149,47 +174,6 @@ public static class LogWriter
         Method = methodName,
         Message = msg.ToJson(),
     };
-
-    private static void WriterLoop()
-    {
-        var ok = 2;
-        var t0 = DateTime.UtcNow;
-        var entries = new List<string>();
-
-        while (ok > 0)
-        {
-            if (ok == 2)
-                Thread.Sleep(30);
-
-            while (LogEntries.TryDequeue(out LogEntry entry))
-                entries.Add(entry.ToJson());
-
-            if (TokenSource.Token.IsCancellationRequested
-                || (DateTime.UtcNow - t0).TotalSeconds > 0.5) // every 0.5 seconds
-            {
-                if (entries.Count > 0)
-                {
-                    try
-                    {
-                        CheckFileSize(FileName);
-                        AppendToFile(entries);
-                        entries.Clear();
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine(ex);
-                    }
-                }
-
-                t0 = DateTime.UtcNow;
-            }
-
-            if (TokenSource.Token.IsCancellationRequested)
-            {
-                --ok;
-            }
-        }
-    }
 
     private static void AppendToFile(List<string> lines)
     {

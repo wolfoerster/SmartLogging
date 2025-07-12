@@ -22,11 +22,11 @@ LogWriter lets you specify the log file, its maximum allowed size and the minimi
 log level to be processed. In most cases you will be happy with the default settings
 of LogWriter, so you won't have to deal with this class except for one method:
 
-### LogWriter.Exit()
+### LogWriter.Flush()
 
 The LogWriter cashes log entries before they are written to disk. So if your
 application terminates unexpectedly there might be a few entries in the cache
-which you will not see in the log file. To avoid this call `LogWriter.Exit()`
+which you will not see in the log file. To avoid this call `LogWriter.Flush()`
 when your application is about to stop.
 
 ### LogLevel
@@ -134,3 +134,10 @@ Note that the lowest accepted maxSize is 64 kB and the highest is 64 MB.
 If the log file exceeds the maximum size the current log file is copied to a 
 file called *"MyApp.log.log"* if the original file is called *"MyApp.log"* 
 and the file *"MyApp.log"* is cleared.
+
+You can also specify the amount of time for buffering log entries:
+
+`LogWriter.BufferingTime = 1;`
+
+This sets the time to 1 second. When you set a value which is lower than 0.1
+or larger than 10, then the value is corrected to these limits.
