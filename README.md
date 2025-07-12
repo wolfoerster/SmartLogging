@@ -1,5 +1,13 @@
 # SmartLogging
-Easy to use .NET file based logging framework using JSON.
+Easy to use .NET logging framework using JSON as output format.
+Log entries can be written to a file, to the console and to a stream.
+
+Since the log entries created by this framework are in JSON format you
+can process these entries programmatically with any JSON deserializer.
+
+For Windows there is an accompanying project called *SmartLogReader* 
+which lets you get the most out of your log files. 
+You will find it here: https://github.com/wolfoerster/SmartLogReader
 
 ## Overview
 The SmartLogging package exports two main classes: SmartLogger and LogWriter.
@@ -17,17 +25,19 @@ A log entry contains the following information:
 6. log message (a simple string or the JSON representation of an object)
 
 ### LogWriter
-LogWriter is a static class, so there is only one instance per application. 
-LogWriter lets you specify the log file, its maximum allowed size and the minimimum
-log level to be processed. In most cases you will be happy with the default settings
-of LogWriter, so you won't have to deal with this class except for one method:
+LogWriter lets you specify where the log entries go to and what's the minimum
+log level to be processed. You can read more about LogWriter at the end of this
+document.
+
+In most cases you will be happy with the default settings of LogWriter 
+so you won't have to deal with this class except for one method:
 
 ### LogWriter.Flush()
 
-The LogWriter cashes log entries before they are written to disk. So if your
-application terminates unexpectedly there might be a few entries in the cache
-which you will not see in the log file. To avoid this call `LogWriter.Flush()`
-when your application is about to stop.
+LogWriter caches log entries before they are written to disk or any other output
+channel. So if your application terminates there might be a few entries 
+in the cache which you will not see in the output. To avoid this call 
+`LogWriter.Flush()` whenever you think that your application stops.
 
 ### LogLevel
 The enum LogLevel defines 7 levels:
@@ -61,7 +71,7 @@ starts working and logs the first message "Start logging".
 You will use a single SmartLogger in each class which has to create log entries.
 
 You can declare this logger as static so every instance of this class will share
-the same logger. Since there is only one LogWriter per application this is fine. 
+the same logger. Since there is only one LogWriter per application, this is fine. 
 So in your class you should declare something like this:
 
 `private static readonly SmartLogger Log = new();`
@@ -115,29 +125,45 @@ You will get this log entry:
 "ThreadId":1,"Level":"Information","Context":"TestApp.Program",
 "Method":"DoSomething","Message":"{\"name\":\"asd\",\"age\":123}"}`
 
-### LogWriter Details
-If you don't explicitely call the (one and only) LogWriter's Init() method,
-your log entries will be written to the current user's temporary directory 
-into a file called *"name of your application.log*", the maximum file size 
-will be 16 MB and the minimum log level will be *Information*.
+## LogWriter Details
+If you don't explicitely call one of the LogWriter.Init() methods,
+your log entries will be written to a file called *"MyApp.log"* in the current 
+user's temporary directory, the maximum file size will be 16 MB and the 
+minimum log level will be *Information*. 
 
-If you want to change the default behaviour, you can call
+The name *"MyApp"* just stands for the name of your application.
 
-`LogWriter.Init(string fileName, long maxSize)`
+If the log file exceeds the maximum size it is copied to a 
+file called *"MyApp.log.log"* and the original file is cleared.
 
-and set the minimum log level with e.g.
+If you want to change this default behaviour you can call one of the 
+following Init methods.
 
-`LogWriter.MinimumLogLevel = LogLevel.Warning`
+### LogWriter.Init(string fileName = null, long maxFileSize = 16MB)
 
-Note that the lowest accepted maxSize is 64 kB and the highest is 64 MB.
+If you call this method without specifying fileName and maxFileSize LogWriter
+will use the same defaults as described above. The parameters fileName and
+maxFileSize let you specify the log file and its maximum allowed size.
 
-If the log file exceeds the maximum size the current log file is copied to a 
-file called *"MyApp.log.log"* if the original file is called *"MyApp.log"* 
-and the file *"MyApp.log"* is cleared.
+Note that the lowest accepted maxFileSize is 64 kB and the highest is 64 MB.
 
-You can also specify the amount of time for buffering log entries:
+### LogWriter.Init(LogSettings settings)
 
-`LogWriter.BufferingTime = 1;`
+This method lets you specify where log entries go to (file and/or console and/or 
+stream), how long entries are buffered and which entries are processed at all.
 
-This sets the time to 1 second. When you set a value which is lower than 0.1
-or larger than 10, then the value is corrected to these limits.
+### LogWriter.Flush()
+
+Forces all cached log entries to be sent to the output. If you don't call this 
+method when your application terminates you might loose some log entries.
+
+### LogWriter.MinimumLogLevel
+
+You can change the minimum log level at any time using this property. Its value 
+controls whether log entries are processed, i.e. written to an output.
+
+### LogWriter.BufferingTime
+
+You can also change the buffering time at any time using this property. By default
+log entries are cached 0.9 seconds before they are sent to the output. You can 
+change this amount of time to your needs in the range of 0.1 to 10.0 seconds.
