@@ -6,8 +6,8 @@ Since the log entries created by this framework are in JSON format you
 can process these entries programmatically with any JSON deserializer.
 
 For Windows there is an accompanying project called *SmartLogReader* 
-which lets you get the most out of your log files. 
-You will find it here: https://github.com/wolfoerster/SmartLogReader
+which lets you get the most out of your log files:
+https://github.com/wolfoerster/SmartLogReader
 
 ## Overview
 The SmartLogging package exports two main classes: SmartLogger and LogWriter.
