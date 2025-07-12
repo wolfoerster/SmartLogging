@@ -22,7 +22,6 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -41,6 +40,8 @@ public static class LogWriter
     private static long MaxFileSize;
     private static Task WriterTask;
     private static bool DoFlush;
+    private static bool LogToConsole;
+    private static StreamWriter StreamWriter;
 
     /// <summary>
     /// Gets the name of the log file.
@@ -75,28 +76,53 @@ public static class LogWriter
     /// name plus '.log' (e.g. MyApp.log.log) and a new file with the original name is created.</param>
     public static void Init(string fileName = null, long maxFileSize = DefaultFileSize)
     {
+        var settings = new LogSettings { LogFileName = fileName, MaxLogFileSize = maxFileSize };
+        Init(settings);
+    }
+
+    public static void Init(LogSettings settings)
+    {
         if (WriterTask != null)
         {
             Log.None("Attemp was made to call Init() repeatedly");
             return;
         }
 
-        FileName = fileName;
-        MaxFileSize = Math.Min(Math.Max(maxFileSize, MinimumFileSize), MaximumFileSize);
-
-        if (FileName == null)
+        if (settings.LogToFile)
         {
-            var name = Path.GetFileNameWithoutExtension(Assembly.GetEntryAssembly().Location);
-            FileName = Path.Combine(Path.GetTempPath(), $"{name}.log");
+            FileName = settings.LogFileName;
+            MaxFileSize = Math.Min(Math.Max(settings.MaxLogFileSize, MinimumFileSize), MaximumFileSize);
+
+            if (FileName == null)
+            {
+                var name = Path.GetFileNameWithoutExtension(Assembly.GetEntryAssembly().Location);
+                FileName = Path.Combine(Path.GetTempPath(), $"{name}.log");
+            }
+
+            settings.LogFileName = FileName;
+            settings.MaxLogFileSize = MaxFileSize;
         }
+
+        if (settings.LogStream != null)
+        {
+            if (!settings.LogStream.CanWrite)
+            {
+                throw new ArgumentException("The specified stream cannot be written to.");
+            }
+
+            StreamWriter = new StreamWriter(settings.LogStream);
+        }
+
+        LogToConsole = settings.LogToConsole;
 
         try
         {
-            LogDirectly("Start logging");
+            var entry = CreateEntry("Start logging", LogLevel.None, typeof(LogWriter).FullName, "Init").ToJson();
+            ProcessEntries([entry]);
         }
         catch (Exception ex)
         {
-            throw new ArgumentException("The specified file name is invalid.", fileName, ex);
+            throw new ArgumentException("The specified file name is invalid.", FileName, ex);
         }
 
         WriterTask = Task.Run(() => WriterLoop());
@@ -130,8 +156,7 @@ public static class LogWriter
                 {
                     try
                     {
-                        CheckFileSize(FileName);
-                        AppendToFile(entries);
+                        ProcessEntries(entries);
                         entries.Clear();
                     }
                     catch (Exception ex)
@@ -142,6 +167,27 @@ public static class LogWriter
 
                 DoFlush = false;
                 t0 = DateTime.UtcNow;
+            }
+        }
+    }
+
+    private static void ProcessEntries(List<string> entries)
+    {
+        // don't catch exceptions!
+        if (FileName != null)
+        {
+            CheckFileSize();
+            AppendToFile(entries);
+        }
+
+        if (LogToConsole || StreamWriter != null)
+        {
+            foreach (var entry in entries)
+            {
+                if (LogToConsole)
+                    Console.WriteLine(entry);
+
+                StreamWriter?.WriteLine(entry);
             }
         }
     }
@@ -175,15 +221,15 @@ public static class LogWriter
         Message = msg.ToJson(),
     };
 
-    private static void AppendToFile(List<string> lines)
+    private static void AppendToFile(List<string> entries)
     {
         // don't catch exceptions!
         lock (Locker)
         {
             using StreamWriter sw = File.AppendText(FileName);
-            foreach (var line in lines)
+            foreach (var entry in entries)
             {
-                sw.WriteLine(line);
+                sw.WriteLine(entry);
             }
         }
     }
@@ -213,32 +259,26 @@ public static class LogWriter
         }
     }
 
-    private static void CheckFileSize(string fileName)
+    private static void CheckFileSize()
     {
-        if (!File.Exists(fileName))
+        if (!File.Exists(FileName))
             return;
 
-        var fileInfo = new FileInfo(fileName);
+        var fileInfo = new FileInfo(FileName);
         if (fileInfo.Length > MaxFileSize)
         {
-            var backupName = fileName + ".log";
+            var backupName = FileName + ".log";
 
             // don't catch exceptions!
             lock (Locker)
             {
-                File.Copy(fileName, backupName, true);
+                File.Copy(FileName, backupName, true);
 
-                var msg = $"Log file {Path.GetFileName(fileName)} exceeded maximum size of {MaxFileSize.ToStringNumBytes()}. Copied to {Path.GetFileName(backupName)} in directory {Path.GetDirectoryName(backupName)}.";
+                var msg = $"Log file {Path.GetFileName(FileName)} exceeded maximum size of {MaxFileSize.ToStringNumBytes()}. Copied to {Path.GetFileName(backupName)} in directory {Path.GetDirectoryName(backupName)}.";
                 var entry = CreateEntry(msg, LogLevel.None, typeof(LogWriter).FullName, "CheckFileSize");
-                File.WriteAllText(fileName, $"{entry.ToJson()}\n");
+                File.WriteAllText(FileName, $"{entry.ToJson()}\n");
             }
         }
-    }
-
-    private static void LogDirectly(string msg, [CallerMemberName] string methodName = null)
-    {
-        var entry = CreateEntry(msg, LogLevel.None, typeof(LogWriter).FullName, methodName);
-        AppendToFile([entry.ToJson()]);
     }
 
     private static string ToStringNumBytes(this long i)

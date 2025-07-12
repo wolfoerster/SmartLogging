@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
+using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using SmartLogging;
@@ -25,9 +27,15 @@ internal class Program
             Debug.WriteLine(ex);
         }
 
-        LogWriter.Init();
-        LogWriter.BufferingTime = 0.5;
-        LogWriter.MinimumLogLevel = LogLevel.Verbose;
+        var logStream = new MemoryStream();
+        var settings = new LogSettings
+        {
+            MinimumLogLevel = LogLevel.Verbose,
+            LogToFile = true,
+            LogToConsole = true,
+            LogStream = logStream,
+        };
+        LogWriter.Init(settings);
 
         Log.Information("this message is for you");
         Task.Run(() => Method1(111));
@@ -59,6 +67,8 @@ internal class Program
 
         TokenSource.Cancel();
         LogWriter.Flush();
+
+        var logs = Encoding.UTF8.GetString(logStream.ToArray());
     }
 
     private static void DoSomething(string name, int age)
