@@ -8,10 +8,14 @@ namespace SmartLogging;
 public class LogSettings
 {
     /// <summary>
-    /// Gets or sets the minimum log level which will be processed.
-    /// Log entries with a log level smaller than this value will not be processed.
+    /// If true, log entries are written to a file specified by <see cref="LogSettings.LogFileName"/>.
     /// </summary>
-    public LogLevel MinimumLogLevel { get; set; } = LogLevel.Information;
+    public bool LogToFile { get; set; } = true;
+
+    /// <summary>
+    /// If true, log entries are written to a stream specified by <see cref="LogSettings.LogStream"/>.
+    /// </summary>
+    public bool LogToStream { get; set; } = false;
 
     /// <summary>
     /// If true, log entries are written to the console.
@@ -19,9 +23,16 @@ public class LogSettings
     public bool LogToConsole { get; set; } = false;
 
     /// <summary>
-    /// If true, log entries are written to a file.
+    /// Gets or sets the minimum log level which will be processed.
+    /// Log entries with a log level smaller than this value will not be processed.
     /// </summary>
-    public bool LogToFile { get; set; } = true;
+    public LogLevel MinimumLogLevel { get; set; } = LogLevel.Information;
+
+    /// <summary>
+    /// Gets or sets the time in seconds the LogWriter is buffering log entries
+    /// before they are written to the output. Valid values are between 0.1 and 10.
+    /// </summary>
+    public double BufferingTime { get; set; } = 0.9;
 
     /// <summary>
     /// The name of the log file which is used when LogToFile is true.
@@ -38,13 +49,7 @@ public class LogSettings
     public long MaxLogFileSize { get; set; } = 16 * 1024 * 1024;
 
     /// <summary>
-    /// Gets or sets the time in seconds the LogWriter is buffering log entries
-    /// before they are written to the output. Valid values are between 0.1 and 10.
-    /// </summary>
-    public double BufferingTime { get; set; } = 0.9;
-
-    /// <summary>
-    /// An optional stream where log entries are written to.
+    /// The stream which is used when LogToStream is true.
     /// </summary>
     public Stream LogStream { get; set; } = null;
 }

@@ -20,7 +20,7 @@ internal class Program
         try
         {
             // check what happens when file name is invalid
-            LogWriter.Init("A:\\*.log");
+            LogWriter.Init("C:\\*.log");
         }
         catch (ArgumentException ex)
         {
@@ -30,9 +30,10 @@ internal class Program
         var logStream = new MemoryStream();
         var settings = new LogSettings
         {
-            MinimumLogLevel = LogLevel.Verbose,
             LogToFile = true,
+            LogToStream = true,
             LogToConsole = true,
+            MinimumLogLevel = LogLevel.Verbose,
             LogStream = logStream,
         };
         LogWriter.Init(settings);

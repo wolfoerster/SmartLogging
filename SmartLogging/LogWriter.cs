@@ -76,7 +76,17 @@ public static class LogWriter
     /// name plus '.log' (e.g. MyApp.log.log) and a new file with the original name is created.</param>
     public static void Init(string fileName = null, long maxFileSize = DefaultFileSize)
     {
-        var settings = new LogSettings { LogFileName = fileName, MaxLogFileSize = maxFileSize };
+        var settings = new LogSettings
+        {
+            LogToFile = true,
+            LogToStream = false,
+            LogToConsole = false,
+            LogFileName = fileName,
+            MaxLogFileSize = maxFileSize,
+            MinimumLogLevel = LogLevel.Information,
+            BufferingTime = 0.9,
+        };
+
         Init(settings);
     }
 
@@ -89,29 +99,10 @@ public static class LogWriter
         }
 
         if (settings.LogToFile)
-        {
-            FileName = settings.LogFileName;
-            MaxFileSize = Math.Min(Math.Max(settings.MaxLogFileSize, MinimumFileSize), MaximumFileSize);
+            InitLogTofile(settings);
 
-            if (FileName == null)
-            {
-                var name = Path.GetFileNameWithoutExtension(Assembly.GetEntryAssembly().Location);
-                FileName = Path.Combine(Path.GetTempPath(), $"{name}.log");
-            }
-
-            settings.LogFileName = FileName;
-            settings.MaxLogFileSize = MaxFileSize;
-        }
-
-        if (settings.LogStream != null)
-        {
-            if (!settings.LogStream.CanWrite)
-            {
-                throw new ArgumentException("The specified stream cannot be written to.");
-            }
-
-            StreamWriter = new StreamWriter(settings.LogStream);
-        }
+        if (settings.LogToStream)
+            InitLogToStream(settings);
 
         LogToConsole = settings.LogToConsole;
 
@@ -126,6 +117,32 @@ public static class LogWriter
         }
 
         WriterTask = Task.Run(() => WriterLoop());
+    }
+
+    private static void InitLogToStream(LogSettings settings)
+    {
+        if (settings.LogStream == null)
+            throw new ArgumentException("No stream specified.");
+
+        if (!settings.LogStream.CanWrite)
+            throw new ArgumentException("The specified stream cannot be written to.");
+
+        StreamWriter = new StreamWriter(settings.LogStream);
+    }
+
+    private static void InitLogTofile(LogSettings settings)
+    {
+        FileName = settings.LogFileName;
+        MaxFileSize = Math.Min(Math.Max(settings.MaxLogFileSize, MinimumFileSize), MaximumFileSize);
+
+        if (FileName == null)
+        {
+            var name = Path.GetFileNameWithoutExtension(Assembly.GetEntryAssembly().Location);
+            FileName = Path.Combine(Path.GetTempPath(), $"{name}.log");
+        }
+
+        settings.LogFileName = FileName;
+        settings.MaxLogFileSize = MaxFileSize;
     }
 
     /// <summary>
