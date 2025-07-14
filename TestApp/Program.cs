@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
@@ -27,14 +28,18 @@ internal class Program
             Debug.WriteLine(ex);
         }
 
+        // tell the LogWriter to use all output channels for demo purpose
         using var logStream = new MemoryStream();
+        var logQueue = new ConcurrentQueue<string>();
         var logSettings = new LogSettings
         {
             LogToFile = true,
             LogToStream = true,
             LogToConsole = true,
+            LogToQueue = true,
             MinimumLogLevel = LogLevel.Verbose,
             LogStream = logStream,
+            LogQueue = logQueue,
         };
         LogWriter.Init(logSettings);
 
@@ -75,6 +80,12 @@ internal class Program
 
         Console.WriteLine("\r\nNow the log entries from the memory stream:\r\n");
         Console.WriteLine(logEntries);
+
+        Console.WriteLine("And now the log entries from the log queue:\r\n");
+        while (logQueue.TryDequeue(out string entry))
+        {
+            Console.WriteLine(entry);
+        }
     }
 
     private static void DoSomething(string name, int age)

@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System.Collections.Concurrent;
+using System.IO;
 using Newtonsoft.Json;
 
 namespace SmartLogging;
@@ -22,6 +23,11 @@ public class LogSettings
     /// If true, log entries are written to the console.
     /// </summary>
     public bool LogToConsole { get; set; } = false;
+
+    /// <summary>
+    /// If true, log entries are written to a queue.
+    /// </summary>
+    public bool LogToQueue { get; set; } = false;
 
     /// <summary>
     /// Gets or sets the minimum log level which will be processed.
@@ -54,4 +60,10 @@ public class LogSettings
     /// </summary>
     [JsonIgnore]
     public Stream LogStream { get; set; } = null;
+
+    /// <summary>
+    /// The queue which is used when LogToQueue is true.
+    /// </summary>
+    [JsonIgnore]
+    public ConcurrentQueue<string> LogQueue { get; set; } = null;
 }

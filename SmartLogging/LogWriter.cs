@@ -33,15 +33,16 @@ public static class LogWriter
     private const long MinimumFileSize = 64 * 1024;
     private const long MaximumFileSize = 64 * 1024 * 1024;
     private const long DefaultFileSize = 16 * 1024 * 1024;
-    private static readonly ConcurrentQueue<string> LogEntries = new();
+    private static readonly ConcurrentQueue<string> LogQueue = [];
+    private static readonly List<Action<string>> LogActions = [];
     private static readonly SmartLogger Log = new();
     private static readonly object Locker = new();
     private static double MaxSeconds = 0.9;
     private static long MaxFileSize;
     private static Task WriterTask;
     private static bool DoFlush;
-    private static bool LogToConsole;
     private static StreamWriter StreamWriter;
+    private static ConcurrentQueue<string> ExternalQueue;
 
     /// <summary>
     /// Gets the name of the log file.
@@ -65,8 +66,9 @@ public static class LogWriter
     }
 
     /// <summary>
-    /// Optionally initializes the log writer. You only need to call this method,
-    /// if you want to change the default log file name or the default maximum log file size of 16 MB.
+    /// Initializes the log writer. You only need to call this method,
+    /// if you want to log into something different than a file or if you want to
+    /// change the default log file name or the default maximum log file size of 16 MB.
     /// </summary>
     /// <param name="fileName">The full qualified name of the log file. If this parameter is null
     /// the name of the entry assembly is used for the file name and the extension will be '.log'
@@ -74,6 +76,7 @@ public static class LogWriter
     /// <param name="maxFileSize">The maximum size of the log file (default is 16 MB).
     /// If the log file exceeds the maximum size it will be copied to a file who's name is the original
     /// name plus '.log' (e.g. MyApp.log.log) and a new file with the original name is created.</param>
+    /// <exception cref="ArgumentException">The file name is invalid.</exception>
     public static void Init(string fileName = null, long maxFileSize = DefaultFileSize)
     {
         var settings = new LogSettings
@@ -81,6 +84,7 @@ public static class LogWriter
             LogToFile = true,
             LogToStream = false,
             LogToConsole = false,
+            LogToQueue = false,
             LogFileName = fileName,
             MaxLogFileSize = maxFileSize,
             MinimumLogLevel = LogLevel.Information,
@@ -90,6 +94,12 @@ public static class LogWriter
         Init(settings);
     }
 
+    /// <summary>
+    /// Initializes the log writer. The log settings let you specify which output channels
+    /// are used for the log entries and other related items. Take a look at class <see cref="LogSettings"/> for details.
+    /// </summary>
+    /// <param name="settings">Settings to control the LogWriter's behavior.</param>
+    /// <exception cref="ArgumentException">One of the output channels is invalid.</exception>
     public static void Init(LogSettings settings)
     {
         if (WriterTask != null)
@@ -104,7 +114,11 @@ public static class LogWriter
         if (settings.LogToStream)
             InitLogToStream(settings);
 
-        LogToConsole = settings.LogToConsole;
+        if (settings.LogToQueue)
+            InitLogToQueue(settings);
+
+        if (settings.LogToConsole)
+            LogActions.Add(entry => Console.WriteLine(entry));
 
         try
         {
@@ -113,10 +127,19 @@ public static class LogWriter
         }
         catch (Exception ex)
         {
-            throw new ArgumentException("The specified file name is invalid.", FileName, ex);
+            throw new ArgumentException("One of the specified output channels is invalid. See inner exception for details.", FileName, ex);
         }
 
         WriterTask = Task.Run(() => WriterLoop());
+    }
+
+    private static void InitLogToQueue(LogSettings settings)
+    {
+        if (settings.LogQueue == null)
+            throw new ArgumentException("No queue specified.");
+
+        ExternalQueue = settings.LogQueue;
+        LogActions.Add(entry => ExternalQueue.Enqueue(entry));
     }
 
     private static void InitLogToStream(LogSettings settings)
@@ -128,6 +151,7 @@ public static class LogWriter
             throw new ArgumentException("The specified stream cannot be written to.");
 
         StreamWriter = new StreamWriter(settings.LogStream);
+        LogActions.Add(entry => StreamWriter.WriteLine(entry));
     }
 
     private static void InitLogTofile(LogSettings settings)
@@ -164,7 +188,7 @@ public static class LogWriter
         {
             Thread.Sleep(30);
 
-            while (LogEntries.TryDequeue(out string entry))
+            while (LogQueue.TryDequeue(out string entry))
                 entries.Add(entry);
 
             if (DoFlush || (DateTime.UtcNow - t0).TotalSeconds > MaxSeconds)
@@ -194,19 +218,27 @@ public static class LogWriter
         if (FileName != null)
         {
             CheckFileSize();
-            AppendToFile(entries);
+            lock (Locker)
+            {
+                using StreamWriter sw = File.AppendText(FileName);
+                foreach (var entry in entries)
+                {
+                    sw.WriteLine(entry);
+                }
+            }
         }
 
-        if (LogToConsole || StreamWriter != null)
+        if (LogActions.Count > 0)
         {
             foreach (var entry in entries)
             {
-                if (LogToConsole)
-                    Console.WriteLine(entry);
-
-                StreamWriter?.WriteLine(entry);
-                StreamWriter?.Flush();
+                foreach(var action in LogActions)
+                {
+                    action(entry);
+                }
             }
+
+            StreamWriter?.Flush();
         }
     }
 
@@ -221,7 +253,7 @@ public static class LogWriter
                 Init();
 
             var entry = CreateEntry(msg, level, context, methodName);
-            LogEntries.Enqueue(entry.ToJson());
+            LogQueue.Enqueue(entry.ToJson());
         }
         catch (Exception ex)
         {
@@ -238,19 +270,6 @@ public static class LogWriter
         Method = methodName,
         Message = msg.ToJson(),
     };
-
-    private static void AppendToFile(List<string> entries)
-    {
-        // don't catch exceptions!
-        lock (Locker)
-        {
-            using StreamWriter sw = File.AppendText(FileName);
-            foreach (var entry in entries)
-            {
-                sw.WriteLine(entry);
-            }
-        }
-    }
 
     private static string ToJson(this object value)
     {
