@@ -150,7 +150,8 @@ Note that the lowest accepted maxFileSize is 64 kB and the highest is 64 MB.
 ### LogWriter.Init(LogSettings settings)
 
 This method lets you specify where log entries go to (file and/or console and/or 
-stream), how long entries are buffered and which entries are processed at all.
+stream and/or queue), how long entries are buffered and which entries are 
+processed at all.
 
 ### LogWriter.Flush()
 
