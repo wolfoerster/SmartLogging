@@ -27,8 +27,8 @@ internal class Program
             Debug.WriteLine(ex);
         }
 
-        var logStream = new MemoryStream();
-        var settings = new LogSettings
+        using var logStream = new MemoryStream();
+        var logSettings = new LogSettings
         {
             LogToFile = true,
             LogToStream = true,
@@ -36,9 +36,11 @@ internal class Program
             MinimumLogLevel = LogLevel.Verbose,
             LogStream = logStream,
         };
-        LogWriter.Init(settings);
+        LogWriter.Init(logSettings);
 
         Log.Information("this message is for you");
+        Log.Information(new { info = "The log settings now also show the name of the log file", logSettings });
+
         Task.Run(() => Method1(111));
         Task.Run(() => Method1(3333));
 
@@ -69,7 +71,10 @@ internal class Program
         TokenSource.Cancel();
         LogWriter.Flush();
 
-        var logs = Encoding.UTF8.GetString(logStream.ToArray());
+        var logEntries = Encoding.UTF8.GetString(logStream.ToArray());
+
+        Console.WriteLine("\r\nNow the log entries from the memory stream:\r\n");
+        Console.WriteLine(logEntries);
     }
 
     private static void DoSomething(string name, int age)
@@ -84,7 +89,7 @@ internal class Program
         {
             var level = ++i % 7;
             Log.Write(i, (LogLevel)level);
-            Thread.Sleep(30 + level);
+            Thread.Sleep(300 + level);
         }
     }
 }

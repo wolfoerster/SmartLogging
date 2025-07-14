@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using Newtonsoft.Json;
 
 namespace SmartLogging;
 
@@ -51,5 +52,6 @@ public class LogSettings
     /// <summary>
     /// The stream which is used when LogToStream is true.
     /// </summary>
+    [JsonIgnore]
     public Stream LogStream { get; set; } = null;
 }

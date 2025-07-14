@@ -146,7 +146,7 @@ public static class LogWriter
     }
 
     /// <summary>
-    /// Writes all pending log entries to disk.
+    /// Writes all pending log entries to the output.
     /// </summary>
     public static void Flush()
     {
@@ -205,6 +205,7 @@ public static class LogWriter
                     Console.WriteLine(entry);
 
                 StreamWriter?.WriteLine(entry);
+                StreamWriter?.Flush();
             }
         }
     }
