@@ -18,11 +18,11 @@ SmartLogger is used to create log entries with certain log levels.
 A log entry contains the following information:
 
 1. creation time of the entry
-2. thread id of the calling thread
-3. log level (a value between 0 and 6)
-4. log context (usually the name of the calling class)
-5. log method (usually the name of the calling method)
-6. log message (a simple string or the JSON representation of an object)
+2. log level (a value between 0 and 6)
+3. log context (usually the name of the calling class)
+4. log method (usually the name of the calling method)
+5. log message (a simple string or the JSON representation of an object)
+6. additional info, e.g. the id of the calling thread
 
 ### LogWriter
 LogWriter lets you specify where the log entries go to and what's the minimum

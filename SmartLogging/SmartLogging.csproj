@@ -1,15 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net45</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;net48</TargetFrameworks>
     <LangVersion>latestMajor</LangVersion>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
 
     <Title>SmartLogging</Title>
     <PackageId>SmartLogging</PackageId>
-    <Version>2.4.0</Version>
-    <PackageVersion>2.4.0</PackageVersion>
+    <Version>3.0.0</Version>
+    <PackageVersion>3.0.0</PackageVersion>
     <Authors>Wolfgang Foerster</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/wolfoerster/SmartLogging</RepositoryUrl>

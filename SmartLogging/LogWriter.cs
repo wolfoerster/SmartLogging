@@ -264,11 +264,11 @@ public static class LogWriter
     private static LogEntry CreateEntry(object msg, LogLevel level, string context, string methodName) => new()
     {
         Time = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture),
-        ThreadId = Environment.CurrentManagedThreadId,
         Level = level.ToString(),
         Context = context,
         Method = methodName,
         Message = msg.ToJson(),
+        Annex = Environment.CurrentManagedThreadId.ToString(),
     };
 
     private static string ToJson(this object value)
