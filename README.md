@@ -33,7 +33,6 @@ In most cases you will be happy with the default settings of LogWriter
 so you won't have to deal with this class except for one method:
 
 ### LogWriter.Flush()
-
 LogWriter caches log entries before they are written to disk or any other output
 channel. So if your application terminates there might be a few entries 
 in the cache which you will not see in the output. To avoid this call 
@@ -62,10 +61,6 @@ application-wide failure.
 
 ***Fatal (5)***: Logs that describe an unrecoverable application or system crash, or a 
 catastrophic failure that requires immediate attention.
-
-***None (6)***: Logs with this priority will be written to disk in any case. This level 
-should not be used in production code. It is but being used when the LogWriter 
-starts working and logs the first message "Start logging".
 
 ### Usage
 You will use a single SmartLogger in each class which has to create log entries.
@@ -140,7 +135,6 @@ If you want to change this default behaviour you can call one of the
 following Init methods.
 
 ### LogWriter.Init(string fileName = null, long maxFileSize = 16MB)
-
 If you call this method without specifying fileName and maxFileSize LogWriter
 will use the same defaults as described above. The parameters fileName and
 maxFileSize let you specify the log file and its maximum allowed size.
@@ -148,23 +142,75 @@ maxFileSize let you specify the log file and its maximum allowed size.
 Note that the lowest accepted maxFileSize is 64 kB and the highest is 64 MB.
 
 ### LogWriter.Init(LogSettings settings)
-
 This method lets you specify where log entries go to (file and/or console and/or 
 stream and/or queue), how long entries are buffered and which entries are 
 processed at all.
 
 ### LogWriter.Flush()
-
 Forces all cached log entries to be sent to the output. If you don't call this 
 method when your application terminates you might loose some log entries.
 
 ### LogWriter.MinimumLogLevel
-
 You can change the minimum log level at any time using this property. Its value 
 controls whether log entries are processed, i.e. written to an output.
 
 ### LogWriter.BufferingTime
-
 You can also change the buffering time at any time using this property. By default
 log entries are cached 0.9 seconds before they are sent to the output. You can 
 change this amount of time to your needs in the range of 0.1 to 10.0 seconds.
+
+## LogSettings
+
+### bool LogToFile
+If true, log entries are written to a file specified by LogFileName.
+
+### bool LogToStream
+If true, log entries are written to a stream specified by LogStream.
+
+### bool LogToConsole
+If true, log entries are written to the console.
+
+### bool LogToQueue
+If true, log entries are written to a queue.
+
+### LogLevel MinimumLogLevel
+Gets or sets the overall minimum log level which will be processed.
+Log entries with a log level smaller than this value will not be processed,
+except there is a context specific minimum level specified in property MinimumLogLevels.
+
+### Dictionary<string, LogLevel> MinimumLogLevels
+Gets or sets context specific minimum log levels which override the overall minimum log level.
+Examples:
+
+```MinimumLogLevels["Context1"] = LogLevel.Debug``` will add a specific minimum log level for loggers 
+whose context is exactly "Context1".
+
+```MinimumLogLevels["Context*"] = LogLevel.Debug``` will add a specific minimum log level for loggers 
+whose context starts with "Context". Note that '*' is only supported at the end of the context specifier.
+
+Since the log context in most cases is set to the full type name of the class which calls a log method, you can specify minimum log levels based on namespaces or class names. Examples:
+
+```MinimumLogLevels["Application1.Module1.Class1"] = LogLevel.Debug``` will only affect log entries from 'Class1'.
+
+```MinimumLogLevels["Application1.Module1.*"] = LogLevel.Debug``` 
+will affect all classes from namespace 'Application1.Module1'.
+
+### double BufferingTime
+Gets or sets the time in seconds the LogWriter is buffering log entries
+before they are written to the output. Valid values are between 0.1 and 10.
+
+### string LogFileName
+The name of the log file which is used when LogToFile is true.
+If this is null the name of the entry assembly is used for the file name, the extension
+will be '.log' and the file will be located in the current user's temporary directory.
+
+### long MaxLogFileSize
+The maximum size of the log file (default is 16 MB).
+If the log file exceeds the maximum size it will be copied to a file who's name is
+the original name plus '.log' (e.g. MyApp.log.log) and the original file is cleared.
+
+### Stream LogStream
+The stream which is used when LogToStream is true.
+
+### ConcurrentQueue<string> LogQueue
+The queue which is used when LogToQueue is true.

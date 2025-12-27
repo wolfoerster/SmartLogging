@@ -1,5 +1,5 @@
 ﻿//******************************************************************************************
-// Copyright © 2017 - 2025 Wolfgang Foerster (wolfoerster@gmx.de)
+// Copyright © 2017 - 2026 Wolfgang Foerster (wolfoerster@gmx.de)
 //
 // This file is part of the SmartLogging project which can be found on github.com
 //
@@ -35,8 +35,8 @@ public static class LogWriter
     private const long DefaultFileSize = 16 * 1024 * 1024;
     private static readonly ConcurrentQueue<string> LogQueue = [];
     private static readonly List<Action<string>> LogActions = [];
-    private static readonly SmartLogger Log = new();
     private static readonly object Locker = new();
+    private static readonly List<Func<string, int>> SpecificLevels = [];
     private static double MaxSeconds = 0.9;
     private static long MaxFileSize;
     private static Task WriterTask;
@@ -104,9 +104,12 @@ public static class LogWriter
     {
         if (WriterTask != null)
         {
-            Log.None("Attemp was made to call Init() repeatedly");
+            new SmartLogger().Warning("LogWriter already initialized!");
             return;
         }
+
+        MinimumLogLevel = settings.MinimumLogLevel;
+        CreateSpecificLevels(settings.MinimumLogLevels);
 
         if (settings.LogToFile)
             InitLogTofile(settings);
@@ -122,7 +125,7 @@ public static class LogWriter
 
         try
         {
-            var entry = CreateEntry("Start logging", LogLevel.None, typeof(LogWriter).FullName, "Init").ToJson();
+            var entry = CreateEntry("Start logging", LogLevel.Information, typeof(LogWriter).FullName, "Init").ToJson();
             ProcessEntries([entry]);
         }
         catch (Exception ex)
@@ -131,6 +134,24 @@ public static class LogWriter
         }
 
         WriterTask = Task.Run(() => WriterLoop());
+    }
+
+    private static void CreateSpecificLevels(Dictionary<string, LogLevel> minimumLogLevels)
+    {
+        foreach (var specificLevel in minimumLogLevels)
+        {
+            var context = specificLevel.Key;
+
+            if (context.EndsWith("*"))
+            {
+                context = context.Substring(0, context.Length - 1);
+                SpecificLevels.Add(x => x.StartsWith(context) ? (int)specificLevel.Value : -1);
+            }
+            else
+            {
+                SpecificLevels.Add(x => x == context ? (int)specificLevel.Value : -1);
+            }
+        }
     }
 
     private static void InitLogToQueue(LogSettings settings)
@@ -244,7 +265,7 @@ public static class LogWriter
 
     internal static void Write(object msg, LogLevel level, string context, string methodName)
     {
-        if (level < MinimumLogLevel)
+        if (level == LogLevel.None || level < GetMinimumLevel(context))
             return;
 
         try
@@ -261,14 +282,26 @@ public static class LogWriter
         }
     }
 
+    private static LogLevel GetMinimumLevel(string context)
+    {
+        foreach (var specificLevel in SpecificLevels)
+        {
+            var level = specificLevel(context);
+            if (level > -1)
+                return (LogLevel)level;
+        }
+
+        return MinimumLogLevel;
+    }
+
     private static LogEntry CreateEntry(object msg, LogLevel level, string context, string methodName) => new()
     {
-        Time = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture),
+        Time = DateTimeOffset.Now.ToString("o", CultureInfo.InvariantCulture),
+        ThreadId = Environment.CurrentManagedThreadId.ToString(),
         Level = level.ToString(),
         Context = context,
         Method = methodName,
         Message = msg.ToJson(),
-        Annex = Environment.CurrentManagedThreadId.ToString(),
     };
 
     private static string ToJson(this object value)
@@ -312,7 +345,7 @@ public static class LogWriter
                 File.Copy(FileName, backupName, true);
 
                 var msg = $"Log file {Path.GetFileName(FileName)} exceeded maximum size of {MaxFileSize.ToStringNumBytes()}. Copied to {Path.GetFileName(backupName)} in directory {Path.GetDirectoryName(backupName)}.";
-                var entry = CreateEntry(msg, LogLevel.None, typeof(LogWriter).FullName, "CheckFileSize");
+                var entry = CreateEntry(msg, LogLevel.Information, typeof(LogWriter).FullName, "CheckFileSize");
                 File.WriteAllText(FileName, $"{entry.ToJson()}\n");
             }
         }

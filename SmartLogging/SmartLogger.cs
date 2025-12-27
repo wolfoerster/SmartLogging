@@ -1,5 +1,5 @@
 ﻿//******************************************************************************************
-// Copyright © 2017 - 2025 Wolfgang Foerster (wolfoerster@gmx.de)
+// Copyright © 2017 - 2026 Wolfgang Foerster (wolfoerster@gmx.de)
 //
 // This file is part of the SmartLogging project which can be found on github.com
 //
@@ -118,9 +118,9 @@ public class SmartLogger
     /// <summary>
     /// Creates a log entry with level None.
     /// </summary>
-    public void None(object msg = null, [CallerMemberName] string methodName = null)
+    public void Exception(Exception exception, [CallerMemberName] string methodName = null)
     {
-        this.Write(msg, LogLevel.None, methodName);
+        this.Write(exception.ToString(), LogLevel.Error, methodName);
     }
 
     /// <summary>
