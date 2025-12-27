@@ -67,24 +67,24 @@ public class LogSettings
     /// If this is null the name of the entry assembly is used for the file name, the extension
     /// will be '.log' and the file will be located in the current user's temporary directory.
     /// </summary>
-    public string LogFileName { get; set; } = null;
+    public string? LogFileName { get; set; } = null;
 
     /// <summary>
-    /// The maximum size of the log file (default is 16 MB).
+    /// The maximum size of the log file (default is 4 MB).
     /// If the log file exceeds the maximum size it will be copied to a file who's name is
     /// the original name plus '.log' (e.g. MyApp.log.log) and the original file is cleared.
     /// </summary>
-    public long MaxLogFileSize { get; set; } = 16 * 1024 * 1024;
+    public long MaxLogFileSize { get; set; } = 4 * 1024 * 1024;
 
     /// <summary>
     /// The stream which is used when LogToStream is true.
     /// </summary>
     [JsonIgnore]
-    public Stream LogStream { get; set; } = null;
+    public Stream? LogStream { get; set; } = null;
 
     /// <summary>
     /// The queue which is used when LogToQueue is true.
     /// </summary>
     [JsonIgnore]
-    public ConcurrentQueue<string> LogQueue { get; set; } = null;
+    public ConcurrentQueue<string>? LogQueue { get; set; } = null;
 }

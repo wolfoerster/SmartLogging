@@ -32,22 +32,22 @@ public static class LogWriter
 {
     private const long MinimumFileSize = 64 * 1024;
     private const long MaximumFileSize = 64 * 1024 * 1024;
-    private const long DefaultFileSize = 16 * 1024 * 1024;
+    private const long DefaultFileSize = 4 * 1024 * 1024;
     private static readonly ConcurrentQueue<string> LogQueue = [];
     private static readonly List<Action<string>> LogActions = [];
     private static readonly object Locker = new();
     private static readonly List<Func<string, int>> SpecificLevels = [];
     private static double MaxSeconds = 0.9;
     private static long MaxFileSize;
-    private static Task WriterTask;
+    private static Task? WriterTask;
     private static bool DoFlush;
-    private static StreamWriter StreamWriter;
-    private static ConcurrentQueue<string> ExternalQueue;
+    private static StreamWriter? StreamWriter;
+    private static ConcurrentQueue<string>? ExternalQueue;
 
     /// <summary>
     /// Gets the name of the log file.
     /// </summary>
-    public static string FileName { get; private set; }
+    public static string? FileName { get; private set; }
 
     /// <summary>
     /// Gets or sets the minimum log level which will be processed.
@@ -68,16 +68,16 @@ public static class LogWriter
     /// <summary>
     /// Initializes the log writer. You only need to call this method,
     /// if you want to log into something different than a file or if you want to
-    /// change the default log file name or the default maximum log file size of 16 MB.
+    /// change the default log file name or the default maximum log file size of 4 MB.
     /// </summary>
     /// <param name="fileName">The full qualified name of the log file. If this parameter is null
     /// the name of the entry assembly is used for the file name and the extension will be '.log'
     /// and the file will be located in the current user's temporary directory.</param>
-    /// <param name="maxFileSize">The maximum size of the log file (default is 16 MB).
+    /// <param name="maxFileSize">The maximum size of the log file (default is 4 MB).
     /// If the log file exceeds the maximum size it will be copied to a file who's name is the original
     /// name plus '.log' (e.g. MyApp.log.log) and a new file with the original name is created.</param>
     /// <exception cref="ArgumentException">The file name is invalid.</exception>
-    public static void Init(string fileName = null, long maxFileSize = DefaultFileSize)
+    public static void Init(string? fileName = null, long maxFileSize = DefaultFileSize)
     {
         var settings = new LogSettings
         {
@@ -112,7 +112,7 @@ public static class LogWriter
         CreateSpecificLevels(settings.MinimumLogLevels);
 
         if (settings.LogToFile)
-            InitLogTofile(settings);
+            InitLogToFile(settings);
 
         if (settings.LogToStream)
             InitLogToStream(settings);
@@ -175,7 +175,7 @@ public static class LogWriter
         LogActions.Add(entry => StreamWriter.WriteLine(entry));
     }
 
-    private static void InitLogTofile(LogSettings settings)
+    private static void InitLogToFile(LogSettings settings)
     {
         FileName = settings.LogFileName;
         MaxFileSize = Math.Min(Math.Max(settings.MaxLogFileSize, MinimumFileSize), MaximumFileSize);
@@ -263,7 +263,7 @@ public static class LogWriter
         }
     }
 
-    internal static void Write(object msg, LogLevel level, string context, string methodName)
+    internal static void Write(object? msg, LogLevel level, string context, string methodName)
     {
         if (level == LogLevel.None || level < GetMinimumLevel(context))
             return;
@@ -294,14 +294,14 @@ public static class LogWriter
         return MinimumLogLevel;
     }
 
-    private static LogEntry CreateEntry(object msg, LogLevel level, string context, string methodName) => new()
+    private static LogEntry CreateEntry(object? msg, LogLevel level, string context, string methodName) => new()
     {
         Time = DateTimeOffset.Now.ToString("o", CultureInfo.InvariantCulture),
         ThreadId = Environment.CurrentManagedThreadId.ToString(),
         Level = level.ToString(),
         Context = context,
         Method = methodName,
-        Message = msg.ToJson(),
+        Message = msg?.ToJson() ?? string.Empty,
     };
 
     private static string ToJson(this object value)

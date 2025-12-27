@@ -37,7 +37,7 @@ internal class Program
             LogToStream = true,
             LogToConsole = true,
             LogToQueue = true,
-            MinimumLogLevel = LogLevel.Warning,
+            MinimumLogLevel = LogLevel.Information,
             LogStream = logStream,
             LogQueue = logQueue,
         };
@@ -46,8 +46,9 @@ internal class Program
 
         LogWriter.Init(logSettings);
 
-        new SmartLogger("SpecialContext").Information("check specific log level");
+        new SmartLogger("SpecialContext").Debug("check specific log level");
 
+        Log.Warning();
         Log.Information("this message is for you");
         Log.Information(new { info = "The log settings now also show the name of the log file", logSettings });
 

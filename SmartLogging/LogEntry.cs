@@ -22,30 +22,30 @@ public class LogEntry
     /// <summary>
     /// The creation time of the entry with time zone information.
     /// </summary>
-    public string Time { get; set; }
+    public string Time { get; set; } = string.Empty;
 
     /// <summary>
     /// The managed thread id of the calling method.
     /// </summary>
-    public string ThreadId { get; set; }
+    public string ThreadId { get; set; } = string.Empty;
 
     /// <summary>
     /// The log level.
     /// </summary>
-    public string Level { get; set; }
+    public string Level { get; set; } = string.Empty;
 
     /// <summary>
     /// The log context (aka log category - usually the full class name of the calling method).
     /// </summary>
-    public string Context { get; set; }
+    public string Context { get; set; } = string.Empty;
 
     /// <summary>
     /// The name of the calling method.
     /// </summary>
-    public string Method { get; set; }
+    public string Method { get; set; } = string.Empty;
 
     /// <summary>
     /// The log message.
     /// </summary>
-    public string Message { get; set; }
+    public string Message { get; set; } = string.Empty;
 }
