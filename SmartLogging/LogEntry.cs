@@ -15,6 +15,9 @@
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 //******************************************************************************************
 
+using System;
+using System.Globalization;
+
 namespace SmartLogging;
 
 public class LogEntry
@@ -22,12 +25,12 @@ public class LogEntry
     /// <summary>
     /// The creation time of the entry with time zone information.
     /// </summary>
-    public string Time { get; set; } = string.Empty;
+    public string Time { get; set; } = DateTimeOffset.Now.ToString("o", CultureInfo.InvariantCulture);
 
     /// <summary>
     /// The managed thread id of the calling method.
     /// </summary>
-    public string ThreadId { get; set; } = string.Empty;
+    public string ThreadId { get; set; } = Environment.CurrentManagedThreadId.ToString();
 
     /// <summary>
     /// The log level.

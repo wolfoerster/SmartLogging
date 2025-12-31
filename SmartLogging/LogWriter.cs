@@ -296,8 +296,6 @@ public static class LogWriter
 
     private static LogEntry CreateEntry(object? msg, LogLevel level, string context, string methodName) => new()
     {
-        Time = DateTimeOffset.Now.ToString("o", CultureInfo.InvariantCulture),
-        ThreadId = Environment.CurrentManagedThreadId.ToString(),
         Level = level.ToString(),
         Context = context,
         Method = methodName,
