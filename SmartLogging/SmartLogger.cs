@@ -1,5 +1,5 @@
 ﻿//******************************************************************************************
-// Copyright © 2017 - 2025 Wolfgang Foerster (wolfoerster@gmx.de)
+// Copyright © 2017 - 2026 Wolfgang Foerster (wolfoerster@gmx.de)
 //
 // This file is part of the SmartLogging project which can be found on github.com
 //
@@ -39,7 +39,7 @@ public class SmartLogger
     /// If 'context' is null, the type of the method which calls this ctor will go into 2.
     /// </summary>
     /// <param name="context">The log context.</param>
-    public SmartLogger(object context = null)
+    public SmartLogger(object? context = null)
     {
         if (context == null)
         {
@@ -70,7 +70,7 @@ public class SmartLogger
     /// <summary>
     /// Creates a log entry with level Verbose.
     /// </summary>
-    public void Verbose(object msg = null, [CallerMemberName] string methodName = null)
+    public void Verbose(object? msg = null, [CallerMemberName] string? methodName = null)
     {
         this.Write(msg, LogLevel.Verbose, methodName);
     }
@@ -78,7 +78,7 @@ public class SmartLogger
     /// <summary>
     /// Creates a log entry with level Debug.
     /// </summary>
-    public void Debug(object msg = null, [CallerMemberName] string methodName = null)
+    public void Debug(object? msg = null, [CallerMemberName] string? methodName = null)
     {
         this.Write(msg, LogLevel.Debug, methodName);
     }
@@ -86,7 +86,7 @@ public class SmartLogger
     /// <summary>
     /// Creates a log entry with level Information.
     /// </summary>
-    public void Information(object msg = null, [CallerMemberName] string methodName = null)
+    public void Information(object? msg = null, [CallerMemberName] string? methodName = null)
     {
         this.Write(msg, LogLevel.Information, methodName);
     }
@@ -94,7 +94,7 @@ public class SmartLogger
     /// <summary>
     /// Creates a log entry with level Warning.
     /// </summary>
-    public void Warning(object msg = null, [CallerMemberName] string methodName = null)
+    public void Warning(object? msg = null, [CallerMemberName] string? methodName = null)
     {
         this.Write(msg, LogLevel.Warning, methodName);
     }
@@ -102,7 +102,7 @@ public class SmartLogger
     /// <summary>
     /// Creates a log entry with level Error.
     /// </summary>
-    public void Error(object msg = null, [CallerMemberName] string methodName = null)
+    public void Error(object? msg = null, [CallerMemberName] string? methodName = null)
     {
         this.Write(msg, LogLevel.Error, methodName);
     }
@@ -110,7 +110,7 @@ public class SmartLogger
     /// <summary>
     /// Creates a log entry with level Fatal.
     /// </summary>
-    public void Fatal(object msg = null, [CallerMemberName] string methodName = null)
+    public void Fatal(object? msg = null, [CallerMemberName] string? methodName = null)
     {
         this.Write(msg, LogLevel.Fatal, methodName);
     }
@@ -118,16 +118,16 @@ public class SmartLogger
     /// <summary>
     /// Creates a log entry with level None.
     /// </summary>
-    public void None(object msg = null, [CallerMemberName] string methodName = null)
+    public void Exception(Exception exception, [CallerMemberName] string? methodName = null)
     {
-        this.Write(msg, LogLevel.None, methodName);
+        this.Write(exception.ToString(), LogLevel.Error, methodName);
     }
 
     /// <summary>
     /// Creates a log entry with the specified level.
     /// </summary>
-    public void Write(object msg, LogLevel level, [CallerMemberName] string methodName = null)
+    public void Write(object? msg, LogLevel level, [CallerMemberName] string? methodName = null)
     {
-        LogWriter.Write(msg, level, context, methodName);
+        LogWriter.Write(msg, level, context, methodName ?? string.Empty);
     }
 }

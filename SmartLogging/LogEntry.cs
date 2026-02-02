@@ -15,38 +15,40 @@
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 //******************************************************************************************
 
+using System;
+using System.Globalization;
+
 namespace SmartLogging;
 
 public class LogEntry
 {
     /// <summary>
-    /// The UTC creation time in invariant roundtrip format.
+    /// The creation time of the entry with time zone information.
     /// </summary>
-    public string Time { get; set; }
+    public string Time { get; set; } = DateTimeOffset.Now.ToString("o", CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// The managed thread id of the calling method.
+    /// </summary>
+    public string ThreadId { get; set; } = Environment.CurrentManagedThreadId.ToString();
 
     /// <summary>
     /// The log level.
     /// </summary>
-    public string Level { get; set; }
+    public string Level { get; set; } = string.Empty;
 
     /// <summary>
-    /// The log context (aka category name - usually the full class name of the calling method).
+    /// The log context (aka log category - usually the full class name of the calling method).
     /// </summary>
-    public string Context { get; set; }
+    public string Context { get; set; } = string.Empty;
 
     /// <summary>
     /// The name of the calling method.
     /// </summary>
-    public string Method { get; set; }
+    public string Method { get; set; } = string.Empty;
 
     /// <summary>
     /// The log message.
     /// </summary>
-    public string Message { get; set; }
-
-    /// <summary>
-    /// Additional information about the log entry, e.g. the managed thread id of the calling method 
-    /// or the connection id of an HTTP request.
-    /// </summary>
-    public string Annex { get; set; }
+    public string Message { get; set; } = string.Empty;
 }

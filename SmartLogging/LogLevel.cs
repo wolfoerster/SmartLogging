@@ -59,9 +59,7 @@ public enum LogLevel
     Fatal,
 
     /// <summary>
-    /// Logs with this priority will be written to disk in any case. This level 
-    /// should not be used in production code. It is but being used when the LogWriter
-    /// starts working and logs the first message "Start logging" and the last message "Stop logging".
+    /// Not used for writing log messages. Specifies that a logging category should not write any messages.
     /// </summary>
     None
 }
