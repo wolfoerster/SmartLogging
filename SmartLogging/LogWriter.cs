@@ -19,7 +19,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Threading;
@@ -125,8 +124,10 @@ public static class LogWriter
 
         try
         {
-            var entry = CreateEntry("Start logging", LogLevel.Information, typeof(LogWriter).FullName, "Init").ToJson();
-            ProcessEntries([entry]);
+            var context = typeof(LogWriter).FullName;
+            var entry1 = CreateEntry("Start logging", LogLevel.Information, context, "Init").ToJson();
+            var entry2 = CreateEntry(new { LogSettings = settings }, LogLevel.Information, context, "Init").ToJson();
+            ProcessEntries([entry1, entry2]);
         }
         catch (Exception ex)
         {

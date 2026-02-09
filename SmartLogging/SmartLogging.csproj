@@ -9,14 +9,14 @@
 
     <Title>SmartLogging</Title>
     <PackageId>SmartLogging</PackageId>
-    <Version>4.0.0</Version>
-    <PackageVersion>4.0.0</PackageVersion>
+    <Version>4.1.0</Version>
+    <PackageVersion>4.1.0</PackageVersion>
     <Authors>Wolfgang Foerster</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/wolfoerster/SmartLogging</RepositoryUrl>
     <PackageProjectUrl>https://github.com/wolfoerster/SmartLogging</PackageProjectUrl>
     <Description>Easy to use .NET logging framework using JSON as output format</Description>
-    <PackageReleaseNotes>Replaced LogEntry.Annex by LogEntry.ThreadId -- Changed semantic of LogLevel.None -- Added context specific MinimumLogLevels -- Added SmartLogger.Exception() -- Removed SmartLogger.None()</PackageReleaseNotes>
+    <PackageReleaseNotes>Write currently used log settings to log file at startup</PackageReleaseNotes>
     <Copyright>Copyright © 2017 - 2026 Wolfgang Foerster (wolfoerster@gmx.de)</Copyright>
     <PackageTags>Logging;.NET;JSON</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

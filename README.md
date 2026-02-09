@@ -1,6 +1,7 @@
 # SmartLogging
 Easy to use .NET logging framework using JSON as output format.
-Log entries can be written to a file, to the console and to a stream.
+Log entries can be written to a file, to the console, to a stream
+and to a queue.
 
 Since the log entries created by this framework are in JSON format you
 can process these entries programmatically with any JSON deserializer.
@@ -20,7 +21,7 @@ A log entry contains the following information:
 1. creation time of the entry
 2. id of the calling thread
 3. log level (a value between 0 and 6)
-4. log context (aka log category, usually the name of the calling class)
+4. log context (aka log category or logger name, usually the name of the calling class)
 5. log method (usually the name of the calling method)
 6. log message (a simple string or the JSON representation of an object)
 
@@ -80,7 +81,7 @@ And when you want to create a log entry inside a method you will call:
 
 The resulting log entry looks like this:
 
-`{"Time":"2025-07-10T08:55:55.3391580+01:00","ThreadId":1,"Level":"Information",
+`{"Time":"2025-07-10T08:55:55.3391580+01:00","ThreadId":"1","Level":"Information",
 "Context":"TestApp.Program","Method":"Main","Message":"this message is for you"}`
 
 The log context is extracted from the declaration of the logger 
@@ -100,7 +101,7 @@ objects. If you do a call like this:
 
 then the JSON-serialized DateTime object will appear as message in your log entry:
 
-`{"Time":"2025-07-09T12:49:18.9541781+01:00","ThreadId":1,"Level":"Information",
+`{"Time":"2025-07-09T12:49:18.9541781+01:00","ThreadId":"1","Level":"Information",
 "Context":"TestApp.Program","Method":"Main",
 "Message":"\"2025-07-09T14:49:18.9412736+02:00\""}`
 
@@ -120,7 +121,7 @@ With SmartLogger you can simply do this:
 You will get this log entry:
 
 `{"Time":"2025-07-09T13:23:22.9126806+01:00",
-"ThreadId":1,"Level":"Information","Context":"TestApp.Program",
+"ThreadId":"1","Level":"Information","Context":"TestApp.Program",
 "Method":"DoSomething","Message":"{\"name\":\"asd\",\"age\":123}"}`
 
 ## LogWriter Details
